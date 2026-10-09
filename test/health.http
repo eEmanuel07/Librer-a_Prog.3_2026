@@ -1,0 +1,9 @@
+@host = http://localhost:8000
+
+### Vivo (no toca la base)
+# Esperado: 200 {"estado": "vivo"}
+GET {{host}}/health/live
+
+### Listo (ejecuta SELECT 1)
+# Esperado: 200 {"estado": "listo", "base": "ok"}
+GET {{host}}/health/ready
