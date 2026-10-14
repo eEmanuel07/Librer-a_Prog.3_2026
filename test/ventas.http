@@ -1,0 +1,162 @@
+@host = http://localhost:8000
+
+# Los ids corresponden a los datos iniciales del script de carga:
+#   cliente 2 = Tomás Ríos · libro 1 = Rayuela ($25000) · libro 4 = Respiración artificial ($27000)
+@cliente_id = 2
+@libro_a = 1
+@libro_b = 4
+
+
+### C-06 · Venta válida con dos renglones
+# Esperado: 201. Los renglones se crean con la venta, el precio_unitario se
+# copia de cada libro (RN-06) y el total lo calcula el servidor (RN-07):
+# 2 x 25000 + 1 x 27000 = 77000.00
+# En la consola del servidor, ~0,5 s después de la respuesta, aparece:
+#   INFO: Comprobante de la venta N enviado a tomas@example.com (total $77000.00)
+# @name ventaValida
+POST {{host}}/ventas/
+Content-Type: application/json
+
+{
+  "cliente_id": {{cliente_id}},
+  "renglones": [
+    { "libro_id": {{libro_a}}, "cantidad": 2 },
+    { "libro_id": {{libro_b}}, "cantidad": 1 }
+  ]
+}
+
+
+### C-07 · Detalle de la venta recién creada
+# Esperado: 200 con cliente y renglones (título, cantidad, precio_unitario, subtotal).
+# Con SQL_ECHO=true se ven siempre 2 SELECT, tenga 1 o muchos renglones:
+#   1) venta JOIN cliente   2) renglon_venta JOIN libro
+GET {{host}}/ventas/{{ventaValida.response.body.id}}
+
+
+### Listado paginado (RN-10)
+# Esperado: 200 con una lista de ventas (id, fecha, total y cliente)
+GET {{host}}/ventas/?limit=20&offset=0
+
+
+### C-05 · Venta con un cliente inexistente
+# Esperado: 409 {"detail": "El cliente indicado no existe"}
+# No se consulta el cliente antes: la base rechaza la clave foránea y se
+# traduce a un mensaje propio (RN-12). No queda ninguna venta a medias.
+POST {{host}}/ventas/
+Content-Type: application/json
+
+{
+  "cliente_id": 9999,
+  "renglones": [
+    { "libro_id": {{libro_a}}, "cantidad": 1 }
+  ]
+}
+
+
+### C-05 · Venta con un libro inexistente
+# Esperado: 409 {"detail": "No existe el libro con id 9999"}
+POST {{host}}/ventas/
+Content-Type: application/json
+
+{
+  "cliente_id": {{cliente_id}},
+  "renglones": [
+    { "libro_id": {{libro_a}}, "cantidad": 1 },
+    { "libro_id": 9999, "cantidad": 1 }
+  ]
+}
+
+
+### RN-05 · Venta sin renglones
+# Esperado: 422 (la lista debe tener al menos un renglón)
+POST {{host}}/ventas/
+Content-Type: application/json
+
+{
+  "cliente_id": {{cliente_id}},
+  "renglones": []
+}
+
+
+### RN-05 · El mismo libro en dos renglones
+# Esperado: 422 "Un mismo libro no puede aparecer en dos renglones"
+POST {{host}}/ventas/
+Content-Type: application/json
+
+{
+  "cliente_id": {{cliente_id}},
+  "renglones": [
+    { "libro_id": {{libro_a}}, "cantidad": 1 },
+    { "libro_id": {{libro_a}}, "cantidad": 2 }
+  ]
+}
+
+
+### RN-06 · El precio no viaja en el cuerpo
+# Esperado: 422 (extra_forbidden en precio_unitario): el precio lo pone el servidor
+POST {{host}}/ventas/
+Content-Type: application/json
+
+{
+  "cliente_id": {{cliente_id}},
+  "renglones": [
+    { "libro_id": {{libro_a}}, "cantidad": 1, "precio_unitario": "1.00" }
+  ]
+}
+
+
+### RN-07 · El total no viaja en el cuerpo
+# Esperado: 422 (extra_forbidden en total): el total lo calcula el servidor
+POST {{host}}/ventas/
+Content-Type: application/json
+
+{
+  "cliente_id": {{cliente_id}},
+  "total": "1.00",
+  "renglones": [
+    { "libro_id": {{libro_a}}, "cantidad": 1 }
+  ]
+}
+
+
+### Cantidad no positiva
+# Esperado: 422 (cantidad debe ser mayor que 0)
+POST {{host}}/ventas/
+Content-Type: application/json
+
+{
+  "cliente_id": {{cliente_id}},
+  "renglones": [
+    { "libro_id": {{libro_a}}, "cantidad": 0 }
+  ]
+}
+
+
+### Detalle de una venta inexistente
+# Esperado: 404 {"detail": "La venta no existe"}
+GET {{host}}/ventas/9999
+
+
+### C-01 · Parámetro de ruta que no es entero
+# Esperado: 422 sin ejecutar el handler
+GET {{host}}/ventas/abc
+
+
+### RN-10 · limit fuera de rango
+# Esperado: 422 (limit va de 1 a 100)
+GET {{host}}/ventas/?limit=101
+
+
+### RN-10 · offset negativo
+# Esperado: 422 (offset desde 0)
+GET {{host}}/ventas/?offset=-1
+
+
+### RN-08 · Las ventas no se modifican
+# Esperado: 405 Method Not Allowed (no existe PATCH de ventas)
+PATCH {{host}}/ventas/1
+Content-Type: application/json
+
+{
+  "cliente_id": 1
+}
