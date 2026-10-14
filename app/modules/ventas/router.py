@@ -1,7 +1,8 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, status
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.database import get_session
+from app.core.pagination import Paginacion, paginacion
 from app.modules.ventas import service
 from app.modules.ventas.schemas import VentaCreate, VentaRead, VentaResumen
 
@@ -24,11 +25,10 @@ async def crear_venta(
 
 @router.get("/", response_model=list[VentaResumen])
 async def listar_ventas(
-    limit: int = Query(20, ge=1, le=100),  # RN-10
-    offset: int = Query(0, ge=0),
+    pag: Paginacion = Depends(paginacion),  # RN-10: helper común
     session: AsyncSession = Depends(get_session),
 ) -> list[VentaResumen]:
-    return await service.listar_ventas(session, limit, offset)
+    return await service.listar_ventas(session, limit=pag.limit, offset=pag.offset)
 
 
 @router.get("/{venta_id}", response_model=VentaRead)

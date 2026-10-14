@@ -8,6 +8,7 @@ from sqlalchemy.orm import joinedload, selectinload
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.errors import http_409_por_integridad
 from app.modules.libros.models import Libro
 from app.modules.ventas.models import RenglonVenta, Venta
 from app.modules.ventas.schemas import VentaCreate, VentaRead, VentaResumen
@@ -16,27 +17,6 @@ from app.modules.ventas.schemas import VentaCreate, VentaRead, VentaResumen
 # el servidor, sin tocar la configuración global de logging (que duplicaría
 # las líneas de SQL_ECHO).
 logger = logging.getLogger("uvicorn.error")
-
-
-# ---------- Traducción de errores (RN-12) ----------
-# Nunca se devuelve el texto de la base: se identifica la restricción violada
-# y se responde con un mensaje propio.
-
-
-def _restriccion_violada(error: IntegrityError) -> str:
-    original = getattr(error.orig, "__cause__", None)  # excepción de asyncpg
-    return getattr(original, "constraint_name", None) or ""
-
-
-def _traducir_integridad(error: IntegrityError) -> HTTPException:
-    restriccion = _restriccion_violada(error)
-    if "cliente_id" in restriccion:
-        detalle = "El cliente indicado no existe"
-    elif "libro_id" in restriccion:
-        detalle = "Alguno de los libros indicados no existe"
-    else:
-        detalle = "La venta no se pudo registrar porque no cumple las reglas de la librería"
-    return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detalle)
 
 
 # ---------- Lecturas con precarga (sin N+1) ----------
@@ -117,7 +97,15 @@ async def crear_venta(session: AsyncSession, datos: VentaCreate) -> VentaRead:
         await session.commit()
     except IntegrityError as error:
         await session.rollback()
-        raise _traducir_integridad(error) from None
+        # RN-12: mensaje propio con el helper común, nunca el texto de la base.
+        # Los libros ya se validaron arriba, así que una FK rechazada acá
+        # sólo puede ser la del cliente.
+        raise http_409_por_integridad(
+            error,
+            detalle_fk="El cliente indicado no existe",
+            detalle_unique="Un mismo libro no puede aparecer en dos renglones",
+            detalle_check="La venta no cumple las reglas de la librería",
+        ) from None
 
     return await obtener_venta(session, venta.id)
 
