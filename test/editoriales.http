@@ -1,0 +1,143 @@
+@host = http://localhost:8000
+
+# editorial de los datos iniciales que ya tiene libros cargados
+@editorial_con_libros = 1
+@id_inexistente = 99999
+
+
+### Alta de una editorial
+# Esperado: 201 con id, nombre y pais
+# @name editorialNueva
+POST {{host}}/editoriales/
+Content-Type: application/json
+
+{
+  "nombre": "Editorial de Prueba",
+  "pais": "Argentina"
+}
+
+
+### Nombre repetido
+# Esperado: 409 con mensaje propio. Lo rechaza el UNIQUE de la base
+POST {{host}}/editoriales/
+Content-Type: application/json
+
+{
+  "nombre": "Editorial de Prueba",
+  "pais": "Chile"
+}
+
+
+### El id no viaja en el alta
+# Esperado: 422
+POST {{host}}/editoriales/
+Content-Type: application/json
+
+{
+  "id": 50,
+  "nombre": "Otra Editorial",
+  "pais": "Uruguay"
+}
+
+
+### Nombre vacio
+# Esperado: 422
+POST {{host}}/editoriales/
+Content-Type: application/json
+
+{
+  "nombre": "",
+  "pais": "Argentina"
+}
+
+
+### Listado paginado (RN-10)
+# Esperado: 200 con una lista de editoriales
+GET {{host}}/editoriales/?limit=5&offset=0
+
+
+### Paginacion fuera de rango: limit 0
+# Esperado: 422
+GET {{host}}/editoriales/?limit=0
+
+
+### Detalle de la editorial recien creada
+# Esperado: 200
+GET {{host}}/editoriales/{{editorialNueva.response.body.id}}
+
+
+### Detalle de una editorial que no existe
+# Esperado: 404
+GET {{host}}/editoriales/{{id_inexistente}}
+
+
+### C-01 · Id que no es un entero
+# Esperado: 422, sin ejecutar el handler
+GET {{host}}/editoriales/abc
+
+
+### PATCH parcial: solo el pais
+# Esperado: 200, el nombre queda igual
+PATCH {{host}}/editoriales/{{editorialNueva.response.body.id}}
+Content-Type: application/json
+
+{
+  "pais": "Uruguay"
+}
+
+
+### Segunda editorial, para probar el nombre repetido en el PATCH
+# Esperado: 201
+# @name editorialOtra
+POST {{host}}/editoriales/
+Content-Type: application/json
+
+{
+  "nombre": "Segunda Editorial de Prueba",
+  "pais": "Mexico"
+}
+
+
+### PATCH con el nombre de otra editorial
+# Esperado: 409 con mensaje propio
+PATCH {{host}}/editoriales/{{editorialOtra.response.body.id}}
+Content-Type: application/json
+
+{
+  "nombre": "{{editorialNueva.response.body.nombre}}"
+}
+
+
+### PATCH con un campo en null
+# Esperado: 422
+PATCH {{host}}/editoriales/{{editorialNueva.response.body.id}}
+Content-Type: application/json
+
+{
+  "nombre": null
+}
+
+
+### PATCH de una editorial que no existe
+# Esperado: 404
+PATCH {{host}}/editoriales/{{id_inexistente}}
+Content-Type: application/json
+
+{
+  "pais": "Peru"
+}
+
+
+### Libros de una editorial
+# Esperado: 200 con los libros de la editorial
+GET {{host}}/editoriales/{{editorial_con_libros}}/libros
+
+
+### Libros de la editorial recien creada
+# Esperado: 200 con lista vacia
+GET {{host}}/editoriales/{{editorialNueva.response.body.id}}/libros
+
+
+### Libros de una editorial que no existe
+# Esperado: 404
+GET {{host}}/editoriales/{{id_inexistente}}/libros
