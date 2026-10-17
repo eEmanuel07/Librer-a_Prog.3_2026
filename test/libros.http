@@ -1,0 +1,223 @@
+@host = http://localhost:8000
+
+# Los ids corresponden a los datos iniciales del script de carga: ajustarlos si
+# la carga inicial usa otros. Hace falta una editorial y al menos dos autores.
+@editorial_id = 1
+@autor_a = 1
+@autor_b = 2
+# Ids que no existen en ninguna base de prueba
+@id_inexistente = 99999
+
+
+### Alta de un libro con dos autores (rol y orden)
+# Esperado: 201 con editorial y autores ordenados por "orden".
+# @name libroNuevo
+POST {{host}}/libros/
+Content-Type: application/json
+
+{
+  "isbn": "TEST-0001",
+  "titulo": "Libro de prueba",
+  "precio": "1500.00",
+  "stock": 10,
+  "editorial_id": {{editorial_id}},
+  "autores": [
+    { "autor_id": {{autor_b}}, "rol": "coautor", "orden": 2 },
+    { "autor_id": {{autor_a}}, "rol": "autor", "orden": 1 }
+  ]
+}
+
+
+### C-02 · ISBN repetido
+# Esperado: 409 con mensaje propio (RN-01). La base rechaza el UNIQUE; no hay
+# consulta previa. Se envía el mismo cuerpo que el alta anterior.
+POST {{host}}/libros/
+Content-Type: application/json
+
+{
+  "isbn": "TEST-0001",
+  "titulo": "Otro título, mismo ISBN",
+  "precio": "1500.00",
+  "stock": 1,
+  "editorial_id": {{editorial_id}},
+  "autores": [{ "autor_id": {{autor_a}}, "rol": "autor", "orden": 1 }]
+}
+
+
+### C-04 · Libro con una editorial inexistente
+# Esperado: 409 con mensaje propio. La base rechaza la clave foránea; el
+# service no consulta antes si la editorial existe.
+POST {{host}}/libros/
+Content-Type: application/json
+
+{
+  "isbn": "TEST-0002",
+  "titulo": "Editorial inexistente",
+  "precio": "1500.00",
+  "stock": 1,
+  "editorial_id": {{id_inexistente}},
+  "autores": [{ "autor_id": {{autor_a}}, "rol": "autor", "orden": 1 }]
+}
+
+
+### C-04 · Libro con un autor inexistente
+# Esperado: 409 con mensaje propio, y no queda ningún libro a medio crear
+# (el rollback deshace también el libro).
+POST {{host}}/libros/
+Content-Type: application/json
+
+{
+  "isbn": "TEST-0003",
+  "titulo": "Autor inexistente",
+  "precio": "1500.00",
+  "stock": 1,
+  "editorial_id": {{editorial_id}},
+  "autores": [{ "autor_id": {{id_inexistente}}, "rol": "autor", "orden": 1 }]
+}
+
+
+### Un mismo autor dos veces en el mismo libro
+# Esperado: 409 (la clave primaria libro_id + autor_id de libro_autor lo impide)
+POST {{host}}/libros/
+Content-Type: application/json
+
+{
+  "isbn": "TEST-0004",
+  "titulo": "Autor repetido",
+  "precio": "1500.00",
+  "stock": 1,
+  "editorial_id": {{editorial_id}},
+  "autores": [
+    { "autor_id": {{autor_a}}, "rol": "autor", "orden": 1 },
+    { "autor_id": {{autor_a}}, "rol": "coautor", "orden": 2 }
+  ]
+}
+
+
+### RN-03 · Precio en cero
+# Esperado: 422 (validación del DTO; además hay CHECK en la base)
+POST {{host}}/libros/
+Content-Type: application/json
+
+{
+  "isbn": "TEST-0005",
+  "titulo": "Precio cero",
+  "precio": "0",
+  "stock": 1,
+  "editorial_id": {{editorial_id}},
+  "autores": []
+}
+
+
+### RN-03 · Stock negativo
+# Esperado: 422
+POST {{host}}/libros/
+Content-Type: application/json
+
+{
+  "isbn": "TEST-0006",
+  "titulo": "Stock negativo",
+  "precio": "1500.00",
+  "stock": -1,
+  "editorial_id": {{editorial_id}},
+  "autores": []
+}
+
+
+### Rol que no está permitido
+# Esperado: 422 (los roles válidos son autor, coautor, traductor e ilustrador)
+POST {{host}}/libros/
+Content-Type: application/json
+
+{
+  "isbn": "TEST-0007",
+  "titulo": "Rol inválido",
+  "precio": "1500.00",
+  "stock": 1,
+  "editorial_id": {{editorial_id}},
+  "autores": [{ "autor_id": {{autor_a}}, "rol": "jefe", "orden": 1 }]
+}
+
+
+### C-07 · Detalle del libro recién creado
+# Esperado: 200 con editorial y autores (nombre, rol, orden) ordenados por orden.
+# Con SQL_ECHO=true se ven siempre 2 SELECT, tenga 1 o muchos autores:
+#   1) libro JOIN editorial   2) libro_autor JOIN autor
+GET {{host}}/libros/{{libroNuevo.response.body.id}}
+
+
+### Detalle de un libro que no existe
+# Esperado: 404
+GET {{host}}/libros/{{id_inexistente}}
+
+
+### C-01 · Id que no es un entero
+# Esperado: 422, sin ejecutar el handler
+GET {{host}}/libros/abc
+
+
+### Listado paginado (RN-10)
+# Esperado: 200 con una lista de libros (con su editorial)
+GET {{host}}/libros/?limit=20&offset=0
+
+
+### Paginación fuera de rango: limit 0
+# Esperado: 422
+GET {{host}}/libros/?limit=0
+
+
+### Paginación fuera de rango: limit 101
+# Esperado: 422
+GET {{host}}/libros/?limit=101
+
+
+### RN-11 · Búsqueda por parte del título, sin distinguir mayúsculas
+# Esperado: 200 con los libros cuyo título contiene "prueba" (aunque esté en
+# otra capitalización).
+GET {{host}}/libros/?titulo=PRUEBA
+
+
+### C-08 · Búsqueda con intento de inyección SQL
+# Esperado: 200 con lista vacía. El texto viaja como parámetro ligado: se busca
+# literalmente ' OR '1'='1 en los títulos, y no se arma SQL con él.
+GET {{host}}/libros/?titulo=%27%20OR%20%271%27%3D%271
+
+
+### PATCH parcial: sólo se cambia el título
+# Esperado: 200; el resto de los campos queda igual
+PATCH {{host}}/libros/{{libroNuevo.response.body.id}}
+Content-Type: application/json
+
+{ "titulo": "Libro de prueba (segunda edición)" }
+
+
+### PATCH con un precio inválido
+# Esperado: 422
+PATCH {{host}}/libros/{{libroNuevo.response.body.id}}
+Content-Type: application/json
+
+{ "precio": "-5" }
+
+
+### PATCH con un campo en null
+# Esperado: 422 (los campos se omiten o se envían con valor; no pueden ser null)
+PATCH {{host}}/libros/{{libroNuevo.response.body.id}}
+Content-Type: application/json
+
+{ "titulo": null }
+
+
+### PATCH a una editorial que no existe
+# Esperado: 409 con mensaje propio
+PATCH {{host}}/libros/{{libroNuevo.response.body.id}}
+Content-Type: application/json
+
+{ "editorial_id": {{id_inexistente}} }
+
+
+### PATCH de un libro que no existe
+# Esperado: 404
+PATCH {{host}}/libros/{{id_inexistente}}
+Content-Type: application/json
+
+{ "titulo": "No existe" }
