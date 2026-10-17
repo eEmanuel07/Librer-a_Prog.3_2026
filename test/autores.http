@@ -1,0 +1,105 @@
+@host = http://localhost:8000
+
+# autor de los datos iniciales que figura en al menos un libro
+@autor_con_libros = 1
+@id_inexistente = 99999
+
+
+### Alta de un autor
+# Esperado: 201 con id, nombre y nacionalidad
+# @name autorNuevo
+POST {{host}}/autores/
+Content-Type: application/json
+
+{
+  "nombre": "Autor de Prueba",
+  "nacionalidad": "Argentina"
+}
+
+
+### El id no viaja en el alta
+# Esperado: 422
+POST {{host}}/autores/
+Content-Type: application/json
+
+{
+  "id": 50,
+  "nombre": "Otro Autor",
+  "nacionalidad": "Chile"
+}
+
+
+### Falta la nacionalidad
+# Esperado: 422
+POST {{host}}/autores/
+Content-Type: application/json
+
+{
+  "nombre": "Autor Incompleto"
+}
+
+
+### Detalle del autor recien creado
+# Esperado: 200
+GET {{host}}/autores/{{autorNuevo.response.body.id}}
+
+
+### Detalle de un autor que no existe
+# Esperado: 404
+GET {{host}}/autores/{{id_inexistente}}
+
+
+### C-01 · Id que no es un entero
+# Esperado: 422, sin ejecutar el handler
+GET {{host}}/autores/abc
+
+
+### PATCH parcial: solo la nacionalidad
+# Esperado: 200, el nombre queda igual
+PATCH {{host}}/autores/{{autorNuevo.response.body.id}}
+Content-Type: application/json
+
+{
+  "nacionalidad": "Uruguay"
+}
+
+
+### PATCH con un campo en null
+# Esperado: 422
+PATCH {{host}}/autores/{{autorNuevo.response.body.id}}
+Content-Type: application/json
+
+{
+  "nombre": null
+}
+
+
+### PATCH de un autor que no existe
+# Esperado: 404
+PATCH {{host}}/autores/{{id_inexistente}}
+Content-Type: application/json
+
+{
+  "nacionalidad": "Peru"
+}
+
+
+### Libros de un autor, con el rol y el orden de cada autoria
+# Esperado: 200. Con SQL_ECHO=true se ven 2 SELECT fijos: el autor y
+# libro_autor JOIN libro, tenga uno o muchos libros
+GET {{host}}/autores/{{autor_con_libros}}/libros
+
+
+### Libros del autor recien creado
+# Esperado: 200 con lista vacia
+GET {{host}}/autores/{{autorNuevo.response.body.id}}/libros
+
+
+### Libros de un autor que no existe
+# Esperado: 404
+GET {{host}}/autores/{{id_inexistente}}/libros
+
+
+### Paginacion fuera de rango en los libros del autor
+# Esperado: 422
+GET {{host}}/autores/{{autor_con_libros}}/libros?limit=101
