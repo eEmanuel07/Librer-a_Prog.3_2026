@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import ConfigDict
+from pydantic import ConfigDict, model_validator
 from sqlmodel import Field, SQLModel
 
 from app.modules.libros.models import Libro, LibroAutor
@@ -48,6 +48,15 @@ class LibroUpdate(SQLModel):
     precio: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
     stock: int | None = Field(default=None, ge=0)
     editorial_id: int | None = None
+
+    @model_validator(mode="after")
+    def sin_nulos_explicitos(self) -> "LibroUpdate":
+        # Todas las columnas son obligatorias: omitir el campo está bien,
+        # mandarlo en null no (la base lo rechazaría con un error opaco).
+        for campo in self.model_fields_set:
+            if getattr(self, campo) is None:
+                raise ValueError(f"'{campo}' no puede ser null")
+        return self
 
 
 # ---------- Salida ----------
