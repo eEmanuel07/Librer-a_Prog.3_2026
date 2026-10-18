@@ -23,6 +23,17 @@ Content-Type: application/json
 }
 
 
+### Email repetido en mayúsculas (el email se normaliza a minúsculas al entrar)
+# Esperado: 409 con el mismo mensaje propio de email repetido ("El email ya está en uso")
+POST {{host}}/clientes/
+Content-Type: application/json
+
+{
+  "nombre": "Tomás en mayúsculas",
+  "email": "TOMAS@EXAMPLE.COM"
+}
+
+
 ### Email inválido
 # Esperado: 422 (EmailStr rechaza el formato)
 POST {{host}}/clientes/
