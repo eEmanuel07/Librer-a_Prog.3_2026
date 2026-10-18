@@ -1,0 +1,195 @@
+@host = http://localhost:8000
+
+# Datos iniciales del script de carga:
+#   cliente 1 = Lucía Fernández (ya tiene perfil) · cliente 2 = Tomás Ríos (sin perfil)
+@cliente_con_perfil = 1
+@cliente_sin_perfil = 2
+@id_inexistente = 99999
+
+
+### C-01 · Parámetro de ruta que no es entero
+# Esperado: 422 sin ejecutar el handler
+GET {{host}}/clientes/abc
+
+
+### C-02 · Email repetido (tomas@example.com ya existe en los datos iniciales)
+# Esperado: 409 con mensaje propio. Lo rechaza el UNIQUE de la base.
+POST {{host}}/clientes/
+Content-Type: application/json
+
+{
+  "nombre": "Otro Tomás",
+  "email": "tomas@example.com"
+}
+
+
+### Email inválido
+# Esperado: 422 (EmailStr rechaza el formato)
+POST {{host}}/clientes/
+Content-Type: application/json
+
+{
+  "nombre": "Sin Email",
+  "email": "no-es-un-email"
+}
+
+
+### El id no viaja en el alta
+# Esperado: 422 (extra_forbidden)
+POST {{host}}/clientes/
+Content-Type: application/json
+
+{
+  "id": 50,
+  "nombre": "Con Id",
+  "email": "conid@example.com"
+}
+
+
+### Nombre vacio
+# Esperado: 422
+POST {{host}}/clientes/
+Content-Type: application/json
+
+{
+  "nombre": "",
+  "email": "vacio@example.com"
+}
+
+
+### Alta de un cliente nuevo
+# Esperado: 201 con id, nombre, email y perfil en null
+# @name clienteNuevo
+POST {{host}}/clientes/
+Content-Type: application/json
+
+{
+  "nombre": "Pedro Gómez",
+  "email": "pedro@example.com"
+}
+
+
+### Detalle del cliente recién creado (sin perfil)
+# Esperado: 200 con perfil en null
+GET {{host}}/clientes/{{clienteNuevo.response.body.id}}
+
+
+### Detalle del cliente 1 (con perfil)
+# Esperado: 200 con perfil (telefono, direccion)
+GET {{host}}/clientes/{{cliente_con_perfil}}
+
+
+### Detalle de un cliente que no existe
+# Esperado: 404 {"detail": "El cliente no existe"}
+GET {{host}}/clientes/{{id_inexistente}}
+
+
+### PATCH parcial: solo el nombre
+# Esperado: 200, el email queda igual
+PATCH {{host}}/clientes/{{clienteNuevo.response.body.id}}
+Content-Type: application/json
+
+{
+  "nombre": "Pedro Gomez"
+}
+
+
+### PATCH con email repetido
+# Esperado: 409 con mensaje propio (unicidad en la base, no se consulta antes)
+PATCH {{host}}/clientes/{{clienteNuevo.response.body.id}}
+Content-Type: application/json
+
+{
+  "email": "lucia@example.com"
+}
+
+
+### PATCH con un campo en null
+# Esperado: 422 (se puede omitir, pero no mandar null)
+PATCH {{host}}/clientes/{{clienteNuevo.response.body.id}}
+Content-Type: application/json
+
+{
+  "nombre": null
+}
+
+
+### PATCH de un cliente que no existe
+# Esperado: 404
+PATCH {{host}}/clientes/{{id_inexistente}}
+Content-Type: application/json
+
+{
+  "nombre": "No Existe"
+}
+
+
+### C-03 · El cliente 1 ya tiene perfil en los datos iniciales
+# Esperado: 409 con mensaje propio. Lo rechaza el UNIQUE de cliente_id (RN-09).
+POST {{host}}/clientes/{{cliente_con_perfil}}/perfil
+Content-Type: application/json
+
+{
+  "telefono": "261-555-9999",
+  "direccion": "Otra calle 456"
+}
+
+
+### Perfil para el cliente 2 (que no tiene perfil)
+# Esperado: 201 con id, cliente_id, telefono y direccion
+# @name perfilNuevo
+POST {{host}}/clientes/{{cliente_sin_perfil}}/perfil
+Content-Type: application/json
+
+{
+  "telefono": "11-555-0202",
+  "direccion": "Av. Corrientes 1234, Buenos Aires"
+}
+
+
+### El perfil de un cliente que no existe
+# Esperado: 404 (se confirma la existencia antes de insertar)
+POST {{host}}/clientes/{{id_inexistente}}/perfil
+Content-Type: application/json
+
+{
+  "telefono": "000-000",
+  "direccion": "Ninguna"
+}
+
+
+### Detalle del cliente 2 con su perfil recién creado
+# Esperado: 200 con perfil cargado
+GET {{host}}/clientes/{{cliente_sin_perfil}}
+
+
+### Ventas del cliente 1 (los datos iniciales cargan una venta con 2 renglones)
+# Esperado: 200 con la venta, cliente y renglones (titulo, cantidad, precio_unitario, subtotal)
+# Con SQL_ECHO=true se ven siempre 3 SELECT, tenga 1 o muchos renglones:
+#   1) cliente (chequeo de existencia)   2) venta JOIN cliente   3) renglon_venta JOIN libro
+GET {{host}}/clientes/{{cliente_con_perfil}}/ventas
+
+
+### Ventas de un cliente sin ventas
+# Esperado: 200 con lista vacia
+GET {{host}}/clientes/{{clienteNuevo.response.body.id}}/ventas
+
+
+### Ventas de un cliente que no existe
+# Esperado: 404
+GET {{host}}/clientes/{{id_inexistente}}/ventas
+
+
+### Paginación de las ventas (RN-10)
+# Esperado: 200 con la lista paginada
+GET {{host}}/clientes/{{cliente_con_perfil}}/ventas?limit=1&offset=0
+
+
+### limit fuera de rango
+# Esperado: 422 (limit va de 1 a 100)
+GET {{host}}/clientes/{{cliente_con_perfil}}/ventas?limit=101
+
+
+### offset negativo
+# Esperado: 422 (offset desde 0)
+GET {{host}}/clientes/{{cliente_con_perfil}}/ventas?offset=-1
