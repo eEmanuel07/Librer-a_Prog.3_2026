@@ -7,6 +7,7 @@ from sqlmodel import Field, Relationship, SQLModel
 if TYPE_CHECKING:
     from app.modules.autores.models import Autor
     from app.modules.editoriales.models import Editorial
+    from app.modules.generos.models import Genero
     from app.modules.ventas.models import RenglonVenta
 
 # lazy="raise": si alguien lee una relación sin precargarla (joinedload /
@@ -51,9 +52,10 @@ class Libro(SQLModel, table=True):
     precio: Decimal = Field(sa_column=Column(Numeric(10, 2), nullable=False))
     stock: int
     editorial_id: int = Field(foreign_key="editorial.id", index=True)
-    # genero_id y la relación genero se agregan en la segunda migración
-    # (la consigna pide que la tabla genero llegue después de la primera).
+    # Agregación opcional: un libro puede no tener género. Llega en la segunda migración.
+    genero_id: Optional[int] = Field(default=None, foreign_key="genero.id", index=True)
 
     editorial: "Editorial" = Relationship(back_populates="libros", sa_relationship_kwargs=_RAISE)
+    genero: Optional["Genero"] = Relationship(back_populates="libros", sa_relationship_kwargs=_RAISE)
     autorias: list["LibroAutor"] = Relationship(back_populates="libro", sa_relationship_kwargs=_RAISE)
     renglones: list["RenglonVenta"] = Relationship(back_populates="libro", sa_relationship_kwargs=_RAISE)

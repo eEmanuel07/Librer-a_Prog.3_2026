@@ -1,0 +1,77 @@
+@host = http://localhost:8000
+
+# genero de los datos iniciales que ya tiene libros cargados
+@genero_con_libros = 1
+@id_inexistente = 99999
+
+
+### Alta de un genero
+# Esperado: 201 con id y nombre
+# @name generoNuevo
+POST {{host}}/generos/
+Content-Type: application/json
+
+{
+  "nombre": "Genero de Prueba"
+}
+
+
+### Nombre repetido
+# Esperado: 409 con mensaje propio. Lo rechaza el UNIQUE de la base
+POST {{host}}/generos/
+Content-Type: application/json
+
+{
+  "nombre": "Genero de Prueba"
+}
+
+
+### El id no viaja en el alta
+# Esperado: 422
+POST {{host}}/generos/
+Content-Type: application/json
+
+{
+  "id": 50,
+  "nombre": "Otro Genero"
+}
+
+
+### Nombre vacio
+# Esperado: 422
+POST {{host}}/generos/
+Content-Type: application/json
+
+{
+  "nombre": ""
+}
+
+
+### Listado paginado (RN-10)
+# Esperado: 200 con una lista de generos
+GET {{host}}/generos/?limit=5&offset=0
+
+
+### Paginacion fuera de rango: offset negativo
+# Esperado: 422
+GET {{host}}/generos/?offset=-1
+
+
+### Libros de un genero
+# Esperado: 200 con los libros del genero
+GET {{host}}/generos/{{genero_con_libros}}/libros
+
+
+### Libros del genero recien creado
+# Esperado: 200 con lista vacia
+GET {{host}}/generos/{{generoNuevo.response.body.id}}/libros
+
+
+### Libros de un genero que no existe
+# Esperado: 404
+GET {{host}}/generos/{{id_inexistente}}/libros
+
+
+### C-01 · Id que no es un entero
+# Esperado: 422, sin ejecutar el handler
+GET {{host}}/generos/abc/libros
