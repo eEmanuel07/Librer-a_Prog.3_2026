@@ -1,0 +1,53 @@
+C-07 - Cantidad fija de consultas en GET /ventas/{id} (detalle con cliente y renglones)
+Fecha: 2026-10-18 - rama docs/readme-y-evidencia-c07 - SQL_ECHO=true - base localhost:5433/libreria (datos de python -m scripts.seed)
+
+Ventas creadas para la prueba:
+  POST /ventas/ {cliente_id:2, renglones:[libro 1 x1]} -> 201 (id 2, 1 renglon)
+  POST /ventas/ {cliente_id:3, renglones:[libros 2,3,4,5]} -> 201 (id 3, 4 renglones)
+
+=== ANTES: GET /ventas/2 (1 renglon) -> 200 - SELECT: 2 ===
+2026-10-18 02:10:34,698 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-10-18 02:10:34,699 INFO sqlalchemy.engine.Engine SELECT venta.id, venta.cliente_id, venta.fecha, venta.total, cliente_1.id AS id_1, cliente_1.nombre, cliente_1.email 
+FROM venta LEFT OUTER JOIN cliente AS cliente_1 ON cliente_1.id = venta.cliente_id 
+WHERE venta.id = $1::INTEGER
+2026-10-18 02:10:34,699 INFO sqlalchemy.engine.Engine [cached since 0.2036s ago] (2,)
+2026-10-18 02:10:34,704 INFO sqlalchemy.engine.Engine SELECT renglon_venta.venta_id AS renglon_venta_venta_id, renglon_venta.id AS renglon_venta_id, renglon_venta.libro_id AS renglon_venta_libro_id, renglon_venta.cantidad AS renglon_venta_cantidad, renglon_venta.precio_unitario AS renglon_venta_precio_unitario, libro_1.id AS libro_1_id, libro_1.isbn AS libro_1_isbn, libro_1.titulo AS libro_1_titulo, libro_1.precio AS libro_1_precio, libro_1.stock AS libro_1_stock, libro_1.editorial_id AS libro_1_editorial_id, libro_1.genero_id AS libro_1_genero_id 
+FROM renglon_venta LEFT OUTER JOIN libro AS libro_1 ON libro_1.id = renglon_venta.libro_id 
+WHERE renglon_venta.venta_id IN ($1::INTEGER) ORDER BY renglon_venta.id
+2026-10-18 02:10:34,704 INFO sqlalchemy.engine.Engine [cached since 0.2038s ago] (2,)
+INFO:     127.0.0.1:58440 - "GET /ventas/2 HTTP/1.1" 200 OK
+2026-10-18 02:10:34,707 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     Comprobante de la venta 2 enviado a tomas@example.com (total $25000.00)
+2026-10-18 02:10:35,010 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     Comprobante de la venta 3 enviado a camila@example.com (total $107500.00)
+2026-10-18 02:10:35,092 INFO sqlalchemy.engine.Engine ROLLBACK
+
+=== DESPUES: GET /ventas/3 (4 renglones) -> 200 - SELECT: 2 ===
+2026-10-18 02:10:35,896 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-10-18 02:10:35,896 INFO sqlalchemy.engine.Engine SELECT venta.id, venta.cliente_id, venta.fecha, venta.total, cliente_1.id AS id_1, cliente_1.nombre, cliente_1.email 
+FROM venta LEFT OUTER JOIN cliente AS cliente_1 ON cliente_1.id = venta.cliente_id 
+WHERE venta.id = $1::INTEGER
+2026-10-18 02:10:35,896 INFO sqlalchemy.engine.Engine [cached since 1.401s ago] (3,)
+2026-10-18 02:10:35,899 INFO sqlalchemy.engine.Engine SELECT renglon_venta.venta_id AS renglon_venta_venta_id, renglon_venta.id AS renglon_venta_id, renglon_venta.libro_id AS renglon_venta_libro_id, renglon_venta.cantidad AS renglon_venta_cantidad, renglon_venta.precio_unitario AS renglon_venta_precio_unitario, libro_1.id AS libro_1_id, libro_1.isbn AS libro_1_isbn, libro_1.titulo AS libro_1_titulo, libro_1.precio AS libro_1_precio, libro_1.stock AS libro_1_stock, libro_1.editorial_id AS libro_1_editorial_id, libro_1.genero_id AS libro_1_genero_id 
+FROM renglon_venta LEFT OUTER JOIN libro AS libro_1 ON libro_1.id = renglon_venta.libro_id 
+WHERE renglon_venta.venta_id IN ($1::INTEGER) ORDER BY renglon_venta.id
+2026-10-18 02:10:35,899 INFO sqlalchemy.engine.Engine [cached since 1.399s ago] (3,)
+INFO:     127.0.0.1:58442 - "GET /ventas/3 HTTP/1.1" 200 OK
+2026-10-18 02:10:35,900 INFO sqlalchemy.engine.Engine ROLLBACK
+
+=== Control: GET /ventas/1 (venta del seed, 2 renglones) -> 200 - SELECT: 2 ===
+2026-10-18 02:10:37,091 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-10-18 02:10:37,091 INFO sqlalchemy.engine.Engine SELECT venta.id, venta.cliente_id, venta.fecha, venta.total, cliente_1.id AS id_1, cliente_1.nombre, cliente_1.email 
+FROM venta LEFT OUTER JOIN cliente AS cliente_1 ON cliente_1.id = venta.cliente_id 
+WHERE venta.id = $1::INTEGER
+2026-10-18 02:10:37,091 INFO sqlalchemy.engine.Engine [cached since 2.596s ago] (1,)
+2026-10-18 02:10:37,094 INFO sqlalchemy.engine.Engine SELECT renglon_venta.venta_id AS renglon_venta_venta_id, renglon_venta.id AS renglon_venta_id, renglon_venta.libro_id AS renglon_venta_libro_id, renglon_venta.cantidad AS renglon_venta_cantidad, renglon_venta.precio_unitario AS renglon_venta_precio_unitario, libro_1.id AS libro_1_id, libro_1.isbn AS libro_1_isbn, libro_1.titulo AS libro_1_titulo, libro_1.precio AS libro_1_precio, libro_1.stock AS libro_1_stock, libro_1.editorial_id AS libro_1_editorial_id, libro_1.genero_id AS libro_1_genero_id 
+FROM renglon_venta LEFT OUTER JOIN libro AS libro_1 ON libro_1.id = renglon_venta.libro_id 
+WHERE renglon_venta.venta_id IN ($1::INTEGER) ORDER BY renglon_venta.id
+2026-10-18 02:10:37,094 INFO sqlalchemy.engine.Engine [cached since 2.594s ago] (1,)
+INFO:     127.0.0.1:58443 - "GET /ventas/1 HTTP/1.1" 200 OK
+2026-10-18 02:10:37,096 INFO sqlalchemy.engine.Engine ROLLBACK
+
+Resultado: 2 SELECT con 1 renglon, 2 con 2 y 2 con 4 -> cantidad fija, sin N+1.
+  1) venta JOIN cliente (joinedload)
+  2) renglon_venta JOIN libro (selectinload + joinedload)

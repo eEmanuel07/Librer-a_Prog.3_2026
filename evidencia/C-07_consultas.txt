@@ -1,0 +1,44 @@
+C-07 - Cantidad fija de consultas en GET /clientes/1/ventas
+Fecha: 2026-10-18 - rama feat/clientes - SQL_ECHO=true - base localhost:5433/libreria
+
+=== ANTES (cliente 1 con 1 venta, 2 renglones) - SELECT: 3 ===
+2026-10-18 02:03:04,927 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-10-18 02:03:04,927 INFO sqlalchemy.engine.Engine SELECT cliente.id AS cliente_id, cliente.nombre AS cliente_nombre, cliente.email AS cliente_email 
+FROM cliente 
+WHERE cliente.id = $1::INTEGER
+2026-10-18 02:03:04,927 INFO sqlalchemy.engine.Engine [cached since 12.44s ago] (1,)
+2026-10-18 02:03:04,930 INFO sqlalchemy.engine.Engine SELECT venta.id, venta.cliente_id, venta.fecha, venta.total, cliente_1.id AS id_1, cliente_1.nombre, cliente_1.email 
+FROM venta LEFT OUTER JOIN cliente AS cliente_1 ON cliente_1.id = venta.cliente_id 
+WHERE venta.cliente_id = $1::INTEGER ORDER BY venta.id 
+ LIMIT $2::INTEGER OFFSET $3::INTEGER
+2026-10-18 02:03:04,931 INFO sqlalchemy.engine.Engine [cached since 12.15s ago] (1, 20, 0)
+2026-10-18 02:03:04,933 INFO sqlalchemy.engine.Engine SELECT renglon_venta.venta_id AS renglon_venta_venta_id, renglon_venta.id AS renglon_venta_id, renglon_venta.libro_id AS renglon_venta_libro_id, renglon_venta.cantidad AS renglon_venta_cantidad, renglon_venta.precio_unitario AS renglon_venta_precio_unitario, libro_1.id AS libro_1_id, libro_1.isbn AS libro_1_isbn, libro_1.titulo AS libro_1_titulo, libro_1.precio AS libro_1_precio, libro_1.stock AS libro_1_stock, libro_1.editorial_id AS libro_1_editorial_id, libro_1.genero_id AS libro_1_genero_id 
+FROM renglon_venta LEFT OUTER JOIN libro AS libro_1 ON libro_1.id = renglon_venta.libro_id 
+WHERE renglon_venta.venta_id IN ($1::INTEGER) ORDER BY renglon_venta.id
+2026-10-18 02:03:04,933 INFO sqlalchemy.engine.Engine [cached since 12.15s ago] (1,)
+INFO:     127.0.0.1:1971 - "GET /clientes/1/ventas HTTP/1.1" 200 OK
+2026-10-18 02:03:04,935 INFO sqlalchemy.engine.Engine ROLLBACK
+
+=== Se agrega una venta: POST /ventas/ {cliente_id:1, renglones:[{libro_id:1,cantidad:1},{libro_id:3,cantidad:2}]} -> 201 ===
+
+=== DESPUES (cliente 1 con 2 ventas, 4 renglones) - SELECT: 3 ===
+2026-10-18 02:03:06,255 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-10-18 02:03:06,256 INFO sqlalchemy.engine.Engine SELECT cliente.id AS cliente_id, cliente.nombre AS cliente_nombre, cliente.email AS cliente_email 
+FROM cliente 
+WHERE cliente.id = $1::INTEGER
+2026-10-18 02:03:06,256 INFO sqlalchemy.engine.Engine [cached since 13.77s ago] (1,)
+2026-10-18 02:03:06,259 INFO sqlalchemy.engine.Engine SELECT venta.id, venta.cliente_id, venta.fecha, venta.total, cliente_1.id AS id_1, cliente_1.nombre, cliente_1.email 
+FROM venta LEFT OUTER JOIN cliente AS cliente_1 ON cliente_1.id = venta.cliente_id 
+WHERE venta.cliente_id = $1::INTEGER ORDER BY venta.id 
+ LIMIT $2::INTEGER OFFSET $3::INTEGER
+2026-10-18 02:03:06,260 INFO sqlalchemy.engine.Engine [cached since 13.48s ago] (1, 20, 0)
+2026-10-18 02:03:06,263 INFO sqlalchemy.engine.Engine SELECT renglon_venta.venta_id AS renglon_venta_venta_id, renglon_venta.id AS renglon_venta_id, renglon_venta.libro_id AS renglon_venta_libro_id, renglon_venta.cantidad AS renglon_venta_cantidad, renglon_venta.precio_unitario AS renglon_venta_precio_unitario, libro_1.id AS libro_1_id, libro_1.isbn AS libro_1_isbn, libro_1.titulo AS libro_1_titulo, libro_1.precio AS libro_1_precio, libro_1.stock AS libro_1_stock, libro_1.editorial_id AS libro_1_editorial_id, libro_1.genero_id AS libro_1_genero_id 
+FROM renglon_venta LEFT OUTER JOIN libro AS libro_1 ON libro_1.id = renglon_venta.libro_id 
+WHERE renglon_venta.venta_id IN ($1::INTEGER, $2::INTEGER) ORDER BY renglon_venta.id
+2026-10-18 02:03:06,263 INFO sqlalchemy.engine.Engine [cached since 13.48s ago] (1, 2)
+INFO:     127.0.0.1:1973 - "GET /clientes/1/ventas HTTP/1.1" 200 OK
+2026-10-18 02:03:06,267 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     Comprobante de la venta 2 enviado a lucia@example.com (total $64000.00)
+2026-10-18 02:03:06,645 INFO sqlalchemy.engine.Engine ROLLBACK
+
+Resultado: 3 SELECT antes y 3 despues -> cantidad fija, sin N+1.
