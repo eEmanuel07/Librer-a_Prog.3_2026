@@ -1,8 +1,9 @@
 @host = http://localhost:8000
 
 # Los ids corresponden a los datos iniciales del script de carga: ajustarlos si
-# la carga inicial usa otros. Hace falta una editorial y al menos dos autores.
+# la carga inicial usa otros. Hace falta una editorial, un género y al menos dos autores.
 @editorial_id = 1
+@genero_id = 1
 @autor_a = 1
 @autor_b = 2
 # Ids que no existen en ninguna base de prueba
@@ -76,6 +77,40 @@ Content-Type: application/json
 }
 
 
+### Alta de un libro con género (agregación opcional)
+# Esperado: 201 con editorial, género (id y nombre) y autores.
+# @name libroConGenero
+POST {{host}}/libros/
+Content-Type: application/json
+
+{
+  "isbn": "TEST-0010",
+  "titulo": "Libro de prueba con género",
+  "precio": "1800.00",
+  "stock": 4,
+  "editorial_id": {{editorial_id}},
+  "genero_id": {{genero_id}},
+  "autores": [{ "autor_id": {{autor_a}}, "rol": "autor", "orden": 1 }]
+}
+
+
+### Libro con un género inexistente
+# Esperado: 409 con mensaje propio (la base rechaza la clave foránea; no hay
+# consulta previa).
+POST {{host}}/libros/
+Content-Type: application/json
+
+{
+  "isbn": "TEST-0011",
+  "titulo": "Género inexistente",
+  "precio": "1800.00",
+  "stock": 1,
+  "editorial_id": {{editorial_id}},
+  "genero_id": {{id_inexistente}},
+  "autores": [{ "autor_id": {{autor_a}}, "rol": "autor", "orden": 1 }]
+}
+
+
 ### Un mismo autor dos veces en el mismo libro
 # Esperado: 409 (la clave primaria libro_id + autor_id de libro_autor lo impide)
 POST {{host}}/libros/
@@ -140,9 +175,9 @@ Content-Type: application/json
 
 
 ### C-07 · Detalle del libro recién creado
-# Esperado: 200 con editorial y autores (nombre, rol, orden) ordenados por orden.
+# Esperado: 200 con editorial, género y autores (nombre, rol, orden) ordenados por orden.
 # Con SQL_ECHO=true se ven siempre 2 SELECT, tenga 1 o muchos autores:
-#   1) libro JOIN editorial   2) libro_autor JOIN autor
+#   1) libro JOIN editorial JOIN género   2) libro_autor JOIN autor
 GET {{host}}/libros/{{libroNuevo.response.body.id}}
 
 
@@ -171,6 +206,17 @@ GET {{host}}/libros/?limit=0
 GET {{host}}/libros/?limit=101
 
 
+### Listado filtrado por género
+# Esperado: 200 con sólo los libros del género indicado, cada uno con su
+# editorial y su género. Sigue siendo una única consulta.
+GET {{host}}/libros/?genero_id={{genero_id}}
+
+
+### Listado filtrado por un género sin libros
+# Esperado: 200 con lista vacía
+GET {{host}}/libros/?genero_id={{id_inexistente}}
+
+
 ### RN-11 · Búsqueda por parte del título, sin distinguir mayúsculas
 # Esperado: 200 con los libros cuyo título contiene "prueba" (aunque esté en
 # otra capitalización).
@@ -189,6 +235,30 @@ PATCH {{host}}/libros/{{libroNuevo.response.body.id}}
 Content-Type: application/json
 
 { "titulo": "Libro de prueba (segunda edición)" }
+
+
+### PATCH: asignar un género a un libro
+# Esperado: 200 con el género en la respuesta
+PATCH {{host}}/libros/{{libroNuevo.response.body.id}}
+Content-Type: application/json
+
+{ "genero_id": {{genero_id}} }
+
+
+### PATCH: quitar el género (es opcional)
+# Esperado: 200 con "genero": null
+PATCH {{host}}/libros/{{libroNuevo.response.body.id}}
+Content-Type: application/json
+
+{ "genero_id": null }
+
+
+### PATCH a un género que no existe
+# Esperado: 409 con mensaje propio
+PATCH {{host}}/libros/{{libroNuevo.response.body.id}}
+Content-Type: application/json
+
+{ "genero_id": {{id_inexistente}} }
 
 
 ### PATCH con un precio inválido
