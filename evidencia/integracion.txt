@@ -1,0 +1,180 @@
+Prueba de integración - base nueva, migraciones, datos iniciales y todos los .http de test/
+Fecha: 2026-10-18 - main en 1e53f4b (Merge pull request #13 from eEmanuel07/docs/readme-y-evidencia-c07)
+Entorno: clon nuevo del repo, entorno virtual con requirements.txt, PostgreSQL 16.15 vacío
+         Python 3.13.16 - FastAPI 0.143.3, SQLModel 0.0.48, SQLAlchemy 2.0.55, Alembic 1.20.0, asyncpg 0.32.0
+Responsable: Joaquín Moran
+
+=== 1. Migraciones (base vacía: 0 tablas) ===
+alembic upgrade head
+    Running upgrade  -> 24071e705bcf, init_schemas
+    Running upgrade 24071e705bcf -> 0efd84a6de03, genero y libro genero_id
+    -> 9 tablas, versión 0efd84a6de03
+alembic downgrade -1
+    Running downgrade 0efd84a6de03 -> 24071e705bcf, genero y libro genero_id
+    -> 8 tablas, versión 24071e705bcf; tabla genero: 0; columna libro.genero_id: 0
+alembic upgrade head
+    Running upgrade 24071e705bcf -> 0efd84a6de03, genero y libro genero_id
+    -> 9 tablas, versión 0efd84a6de03
+alembic check
+    No new upgrade operations detected.
+
+=== 2. Datos iniciales ===
+python -m scripts.seed
+    Base de destino: postgresql+asyncpg://postgres@localhost:5433/libreria
+    ATENCIÓN: este script borra TODOS los datos de las tablas del proyecto.
+    Filas por tabla:
+      autor: 5
+      cliente: 3
+      editorial: 3
+      genero: 3
+      libro: 6
+      perfil_cliente: 1
+      venta: 1
+      libro_autor: 8
+      renglon_venta: 2
+
+=== 3. Archivos .http (cada uno con el seed recién cargado, como indica el README) ===
+health.http          2 pedidos:   2 con el código esperado, 0 distintos
+editoriales.http    17 pedidos:  17 con el código esperado, 0 distintos
+generos.http        10 pedidos:  10 con el código esperado, 0 distintos
+autores.http        13 pedidos:  13 con el código esperado, 0 distintos
+libros.http         28 pedidos:  28 con el código esperado, 0 distintos
+clientes.http       23 pedidos:  23 con el código esperado, 0 distintos
+ventas.http         15 pedidos:  15 con el código esperado, 0 distintos
+TOTAL              108 pedidos: 108 con el código esperado, 0 distintos
+
+Seguidos sobre un único seed (sin recargar entre archivos):
+    108 pedidos: 108 con el código esperado, 0 distintos
+
+=== 4. Controles sobre las respuestas y la consola del servidor ===
+Respuestas 500: 0
+Respuestas con texto interno de la base (RN-12: tablas, restricciones, trazas): 0
+Excepciones en la consola del servidor: 0
+
+C-07 con SQL_ECHO=true (consultas SELECT por pedido):
+    GET /libros/1   -> 200, 2 SELECT  (Rayuela, 1 autor)
+    GET /libros/6   -> 200, 2 SELECT  (Antología, 3 autores)
+    GET /ventas/1   -> 200, 2 SELECT  (venta del seed, 2 renglones)
+    GET /ventas/2   -> 200, 2 SELECT  (venta nueva, 5 renglones)
+
+=== 5. Observación ===
+Si se vuelven a correr los .http sin recargar el seed, las altas con nombre, ISBN o email
+fijos responden 409 porque esos valores ya existen (RN-01 y RN-02): es el comportamiento
+correcto. Por eso el README indica correr python -m scripts.seed antes de probar.
+
+=== 6. Detalle de cada pedido (código obtenido y esperado) ===
+-- test/health.http
+    OK  200 (esperado 200)  Vivo (no toca la base)
+    OK  200 (esperado 200)  Listo (ejecuta SELECT 1)
+-- test/editoriales.http
+    OK  201 (esperado 201)  Alta de una editorial
+    OK  409 (esperado 409)  Nombre repetido
+    OK  422 (esperado 422)  El id no viaja en el alta
+    OK  422 (esperado 422)  Nombre vacio
+    OK  200 (esperado 200)  Listado paginado (RN-10)
+    OK  422 (esperado 422)  Paginacion fuera de rango: limit 0
+    OK  200 (esperado 200)  Detalle de la editorial recien creada
+    OK  404 (esperado 404)  Detalle de una editorial que no existe
+    OK  422 (esperado 422)  C-01 · Id que no es un entero
+    OK  200 (esperado 200)  PATCH parcial: solo el pais
+    OK  201 (esperado 201)  Segunda editorial, para probar el nombre repetido en el PATC
+    OK  409 (esperado 409)  PATCH con el nombre de otra editorial
+    OK  422 (esperado 422)  PATCH con un campo en null
+    OK  404 (esperado 404)  PATCH de una editorial que no existe
+    OK  200 (esperado 200)  Libros de una editorial
+    OK  200 (esperado 200)  Libros de la editorial recien creada
+    OK  404 (esperado 404)  Libros de una editorial que no existe
+-- test/generos.http
+    OK  201 (esperado 201)  Alta de un genero
+    OK  409 (esperado 409)  Nombre repetido
+    OK  422 (esperado 422)  El id no viaja en el alta
+    OK  422 (esperado 422)  Nombre vacio
+    OK  200 (esperado 200)  Listado paginado (RN-10)
+    OK  422 (esperado 422)  Paginacion fuera de rango: offset negativo
+    OK  200 (esperado 200)  Libros de un genero
+    OK  200 (esperado 200)  Libros del genero recien creado
+    OK  404 (esperado 404)  Libros de un genero que no existe
+    OK  422 (esperado 422)  C-01 · Id que no es un entero
+-- test/autores.http
+    OK  201 (esperado 201)  Alta de un autor
+    OK  422 (esperado 422)  El id no viaja en el alta
+    OK  422 (esperado 422)  Falta la nacionalidad
+    OK  200 (esperado 200)  Detalle del autor recien creado
+    OK  404 (esperado 404)  Detalle de un autor que no existe
+    OK  422 (esperado 422)  C-01 · Id que no es un entero
+    OK  200 (esperado 200)  PATCH parcial: solo la nacionalidad
+    OK  422 (esperado 422)  PATCH con un campo en null
+    OK  404 (esperado 404)  PATCH de un autor que no existe
+    OK  200 (esperado 200)  Libros de un autor, con el rol y el orden de cada autoria
+    OK  200 (esperado 200)  Libros del autor recien creado
+    OK  404 (esperado 404)  Libros de un autor que no existe
+    OK  422 (esperado 422)  Paginacion fuera de rango en los libros del autor
+-- test/libros.http
+    OK  201 (esperado 201)  Alta de un libro con dos autores (rol y orden)
+    OK  409 (esperado 409)  C-02 · ISBN repetido
+    OK  409 (esperado 409)  C-04 · Libro con una editorial inexistente
+    OK  409 (esperado 409)  C-04 · Libro con un autor inexistente
+    OK  201 (esperado 201)  Alta de un libro con género (agregación opcional)
+    OK  409 (esperado 409)  Libro con un género inexistente
+    OK  409 (esperado 409)  Un mismo autor dos veces en el mismo libro
+    OK  422 (esperado 422)  RN-03 · Precio en cero
+    OK  422 (esperado 422)  RN-03 · Stock negativo
+    OK  422 (esperado 422)  Rol que no está permitido
+    OK  200 (esperado 200)  C-07 · Detalle del libro recién creado
+    OK  404 (esperado 404)  Detalle de un libro que no existe
+    OK  422 (esperado 422)  C-01 · Id que no es un entero
+    OK  200 (esperado 200)  Listado paginado (RN-10)
+    OK  422 (esperado 422)  Paginación fuera de rango: limit 0
+    OK  422 (esperado 422)  Paginación fuera de rango: limit 101
+    OK  200 (esperado 200)  Listado filtrado por género
+    OK  200 (esperado 200)  Listado filtrado por un género sin libros
+    OK  200 (esperado 200)  RN-11 · Búsqueda por parte del título, sin distinguir mayúsc
+    OK  200 (esperado 200)  C-08 · Búsqueda con intento de inyección SQL
+    OK  200 (esperado 200)  PATCH parcial: sólo se cambia el título
+    OK  200 (esperado 200)  PATCH: asignar un género a un libro
+    OK  200 (esperado 200)  PATCH: quitar el género (es opcional)
+    OK  409 (esperado 409)  PATCH a un género que no existe
+    OK  422 (esperado 422)  PATCH con un precio inválido
+    OK  422 (esperado 422)  PATCH con un campo en null
+    OK  409 (esperado 409)  PATCH a una editorial que no existe
+    OK  404 (esperado 404)  PATCH de un libro que no existe
+-- test/clientes.http
+    OK  422 (esperado 422)  C-01 · Parámetro de ruta que no es entero
+    OK  409 (esperado 409)  C-02 · Email repetido (tomas@example.com ya existe en los da
+    OK  422 (esperado 422)  Email inválido
+    OK  422 (esperado 422)  El id no viaja en el alta
+    OK  422 (esperado 422)  Nombre vacio
+    OK  201 (esperado 201)  Alta de un cliente nuevo
+    OK  200 (esperado 200)  Detalle del cliente recién creado (sin perfil)
+    OK  200 (esperado 200)  Detalle del cliente 1 (con perfil)
+    OK  404 (esperado 404)  Detalle de un cliente que no existe
+    OK  200 (esperado 200)  PATCH parcial: solo el nombre
+    OK  409 (esperado 409)  PATCH con email repetido
+    OK  422 (esperado 422)  PATCH con un campo en null
+    OK  404 (esperado 404)  PATCH de un cliente que no existe
+    OK  409 (esperado 409)  C-03 · El cliente 1 ya tiene perfil en los datos iniciales
+    OK  201 (esperado 201)  Perfil para el cliente 2 (que no tiene perfil)
+    OK  404 (esperado 404)  El perfil de un cliente que no existe
+    OK  200 (esperado 200)  Detalle del cliente 2 con su perfil recién creado
+    OK  200 (esperado 200)  Ventas del cliente 1 (los datos iniciales cargan una venta c
+    OK  200 (esperado 200)  Ventas de un cliente sin ventas
+    OK  404 (esperado 404)  Ventas de un cliente que no existe
+    OK  200 (esperado 200)  Paginación de las ventas (RN-10)
+    OK  422 (esperado 422)  limit fuera de rango
+    OK  422 (esperado 422)  offset negativo
+-- test/ventas.http
+    OK  201 (esperado 201)  C-06 · Venta válida con dos renglones
+    OK  200 (esperado 200)  C-07 · Detalle de la venta recién creada
+    OK  200 (esperado 200)  Listado paginado (RN-10)
+    OK  409 (esperado 409)  C-05 · Venta con un cliente inexistente
+    OK  409 (esperado 409)  C-05 · Venta con un libro inexistente
+    OK  422 (esperado 422)  RN-05 · Venta sin renglones
+    OK  422 (esperado 422)  RN-05 · El mismo libro en dos renglones
+    OK  422 (esperado 422)  RN-06 · El precio no viaja en el cuerpo
+    OK  422 (esperado 422)  RN-07 · El total no viaja en el cuerpo
+    OK  422 (esperado 422)  Cantidad no positiva
+    OK  404 (esperado 404)  Detalle de una venta inexistente
+    OK  422 (esperado 422)  C-01 · Parámetro de ruta que no es entero
+    OK  422 (esperado 422)  RN-10 · limit fuera de rango
+    OK  422 (esperado 422)  RN-10 · offset negativo
+    OK  405 (esperado 405)  RN-08 · Las ventas no se modifican
