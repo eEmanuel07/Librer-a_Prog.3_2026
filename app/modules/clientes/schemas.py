@@ -1,4 +1,4 @@
-from pydantic import ConfigDict, EmailStr, model_validator
+from pydantic import ConfigDict, EmailStr, field_validator, model_validator
 from sqlmodel import Field, SQLModel
 
 from app.modules.clientes.models import Cliente, PerfilCliente
@@ -8,11 +8,19 @@ from app.modules.clientes.models import Cliente, PerfilCliente
 # con 422 en lugar de ignorarse.
 
 
+def _normalizar_email(valor: object) -> object:
+    # El email no distingue mayúsculas: se guarda sin espacios y en minúsculas,
+    # así el UNIQUE de la base detecta "Tomas@..." y "tomas@..." como repetidos.
+    return valor.strip().lower() if isinstance(valor, str) else valor
+
+
 class ClienteCreate(SQLModel):
     model_config = ConfigDict(extra="forbid")
 
     nombre: str = Field(min_length=1)
     email: EmailStr
+
+    _email_normalizado = field_validator("email", mode="before")(_normalizar_email)
 
 
 class ClienteUpdate(SQLModel):
@@ -22,6 +30,9 @@ class ClienteUpdate(SQLModel):
 
     nombre: str | None = Field(default=None, min_length=1)
     email: EmailStr | None = None
+
+    # Solo actúa si el email viene informado; el null lo rechaza el validador de abajo.
+    _email_normalizado = field_validator("email", mode="before")(_normalizar_email)
 
     @model_validator(mode="after")
     def sin_nulos_explicitos(self) -> "ClienteUpdate":
