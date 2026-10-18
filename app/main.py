@@ -9,6 +9,12 @@ from app.modules.editoriales.router import router as editoriales_router
 from app.modules.health.router import router as health_router
 from app.modules.libros.router import router as libros_router
 
+# SQLAlchemy resuelve las relaciones por nombre ("Cliente", "RenglonVenta"...): todos los
+# modelos tienen que estar importados antes del primer uso, aunque el módulo
+# dueño todavía no registre su router.
+import app.modules.clientes.models  # noqa: F401
+import app.modules.ventas.models  # noqa: F401
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
