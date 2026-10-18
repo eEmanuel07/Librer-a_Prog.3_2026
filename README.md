@@ -7,7 +7,7 @@ Hecha con **FastAPI** (handlers `async`), **SQLModel**, **PostgreSQL** y **Alemb
 
 ## Requisitos
 
-- Python 3.10 o superior.
+- Python 3.12 o superior.
 - Docker, para correr PostgreSQL.
 
 ## Instalación
@@ -28,6 +28,11 @@ source .venv/Scripts/activate
 ```powershell
 # PowerShell
 .venv\Scripts\Activate.ps1
+```
+
+```cmd
+:: CMD
+.venv\Scripts\activate.bat
 ```
 
 Instalar las dependencias:
