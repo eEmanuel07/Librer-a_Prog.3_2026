@@ -4,6 +4,13 @@ Revision ID: 24071e705bcf
 Revises: 
 Create Date: 2026-10-17 21:25:04.086154
 
+Migración revisada contra los modelos de app/modules/*/models.py antes de
+aplicarla. No hizo falta corregir nada de lo autogenerado: las 8 tablas (todas
+menos genero), los UNIQUE, los CHECK, los índices de cada FK y el ondelete
+CASCADE de renglon_venta.venta_id coinciden con lo declarado en los modelos.
+El import de sqlmodel lo agregó autogenerate porque las columnas de texto usan
+sqlmodel.sql.sqltypes.AutoString.
+
 """
 from typing import Sequence, Union
 
