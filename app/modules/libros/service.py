@@ -15,7 +15,7 @@ from app.modules.libros.schemas import (
 
 # RN-12: mensajes propios para el 409; nunca el texto de la base.
 _DETALLE_UNIQUE = "El ISBN ya existe o un autor figura dos veces en el libro"
-_DETALLE_FK = "La editorial o algún autor indicado no existe"
+_DETALLE_FK = "La editorial, el género o algún autor indicado no existe"
 _DETALLE_CHECK = "Los datos del libro no cumplen las reglas del catálogo"
 
 
@@ -28,13 +28,14 @@ def _no_existe() -> HTTPException:
 
 async def obtener_libro(session: AsyncSession, libro_id: int) -> LibroRead:
     # Cantidad fija de consultas, sin importar cuántos autores tenga (C-07):
-    #   1) libro JOIN editorial          -> joinedload (relación a uno)
-    #   2) autorías JOIN autor           -> selectinload (colección) + joinedload (a uno)
+    #   1) libro JOIN editorial JOIN género -> joinedload (relaciones a uno)
+    #   2) autorías JOIN autor              -> selectinload (colección) + joinedload (a uno)
     consulta = (
         select(Libro)
         .where(Libro.id == libro_id)
         .options(
             joinedload(Libro.editorial),
+            joinedload(Libro.genero),
             selectinload(Libro.autorias).joinedload(LibroAutor.autor),
         )
         # Si el libro ya está en la sesión (recién creado o modificado), lo
@@ -48,10 +49,16 @@ async def obtener_libro(session: AsyncSession, libro_id: int) -> LibroRead:
 
 
 async def listar_libros(
-    session: AsyncSession, limit: int, offset: int, titulo: str | None
+    session: AsyncSession,
+    limit: int,
+    offset: int,
+    titulo: str | None,
+    genero_id: int | None = None,
 ) -> list[LibroResumen]:
-    # Una sola consulta: libro JOIN editorial.
-    consulta = select(Libro).options(joinedload(Libro.editorial))
+    # Una sola consulta: libro JOIN editorial JOIN género.
+    consulta = select(Libro).options(joinedload(Libro.editorial), joinedload(Libro.genero))
+    if genero_id is not None:
+        consulta = consulta.where(Libro.genero_id == genero_id)
     if titulo:
         # RN-11: parámetro ligado, sin distinguir mayúsculas. autoescape hace
         # que % y _ del texto buscado se tomen literalmente.
@@ -65,7 +72,7 @@ async def listar_libros(
 
 
 async def crear_libro(session: AsyncSession, datos: LibroCreate) -> LibroRead:
-    # Agregación: viajan los ids de la editorial y de cada autor. No se
+    # Agregación: viajan los ids de la editorial, del género (opcional) y de cada autor. No se
     # consulta antes si existen: se escribe y, si la base rechaza la clave
     # foránea, se responde 409 (C-04).
     libro = Libro(
@@ -74,6 +81,7 @@ async def crear_libro(session: AsyncSession, datos: LibroCreate) -> LibroRead:
         precio=datos.precio,
         stock=datos.stock,
         editorial_id=datos.editorial_id,
+        genero_id=datos.genero_id,
     )
     for autoria in datos.autores:
         libro.autorias.append(
