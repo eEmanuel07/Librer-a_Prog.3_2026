@@ -8,6 +8,7 @@ from app.modules.autores.router import router as autores_router
 from app.modules.editoriales.router import router as editoriales_router
 from app.modules.health.router import router as health_router
 from app.modules.libros.router import router as libros_router
+from app.modules.ventas.router import router as ventas_router
 
 # SQLAlchemy resuelve las relaciones por nombre ("Cliente", "RenglonVenta"...): todos los
 # modelos tienen que estar importados antes del primer uso, aunque el módulo
@@ -32,6 +33,7 @@ app.include_router(health_router)
 app.include_router(editoriales_router)
 app.include_router(autores_router)
 app.include_router(libros_router)
+app.include_router(ventas_router)
 
 # Cada integrante registra acá el router de su módulo:
 # from app.modules.editoriales.router import router as editoriales_router
