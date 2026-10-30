@@ -22,12 +22,14 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.database import get_session
 from app.core.errors import conflicto_por_integridad
 from app.modules.editoriales.repository import EditorialRepository
+from app.modules.generos.repository import GeneroRepository
 
 
 class UnitOfWork:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self.editoriales = EditorialRepository(session)
+        self.generos = GeneroRepository(session)
 
     async def __aenter__(self) -> "UnitOfWork":
         return self
