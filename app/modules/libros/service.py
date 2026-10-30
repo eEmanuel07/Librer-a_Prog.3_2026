@@ -1,10 +1,5 @@
-from fastapi import HTTPException, status
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import joinedload, selectinload
-from sqlmodel import select
-from sqlmodel.ext.asyncio.session import AsyncSession
-
-from app.core.errors import http_409_por_integridad
+from app.core.errors import NoEncontrado
+from app.core.uow import UnitOfWork
 from app.modules.libros.models import Libro, LibroAutor
 from app.modules.libros.schemas import (
     LibroCreate,
@@ -17,61 +12,42 @@ from app.modules.libros.schemas import (
 _DETALLE_UNIQUE = "El ISBN ya existe o un autor figura dos veces en el libro"
 _DETALLE_FK = "La editorial, el género o algún autor indicado no existe"
 _DETALLE_CHECK = "Los datos del libro no cumplen las reglas del catálogo"
+_DETALLE_NO_EXISTE = "El libro no existe"
 
 
-def _no_existe() -> HTTPException:
-    return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El libro no existe")
+async def _commit(uow: UnitOfWork) -> None:
+    await uow.commit(
+        detalle_unique=_DETALLE_UNIQUE,  # RN-01 / C-02
+        detalle_fk=_DETALLE_FK,
+        detalle_check=_DETALLE_CHECK,
+    )
 
 
 # ---------- Lecturas con precarga (sin N+1) ----------
 
 
-async def obtener_libro(session: AsyncSession, libro_id: int) -> LibroRead:
-    # Cantidad fija de consultas, sin importar cuántos autores tenga (C-07):
-    #   1) libro JOIN editorial JOIN género -> joinedload (relaciones a uno)
-    #   2) autorías JOIN autor              -> selectinload (colección) + joinedload (a uno)
-    consulta = (
-        select(Libro)
-        .where(Libro.id == libro_id)
-        .options(
-            joinedload(Libro.editorial),
-            joinedload(Libro.genero),
-            selectinload(Libro.autorias).joinedload(LibroAutor.autor),
-        )
-        # Si el libro ya está en la sesión (recién creado o modificado), lo
-        # recarga con sus relaciones en lugar de devolver la copia sin precargar.
-        .execution_options(populate_existing=True)
-    )
-    libro = (await session.exec(consulta)).first()
+async def obtener_libro(uow: UnitOfWork, libro_id: int) -> LibroRead:
+    libro = await uow.libros.obtener_con_relaciones(libro_id)
     if libro is None:
-        raise _no_existe()
+        raise NoEncontrado(_DETALLE_NO_EXISTE)
     return LibroRead.desde_modelo(libro)
 
 
 async def listar_libros(
-    session: AsyncSession,
+    uow: UnitOfWork,
     limit: int,
     offset: int,
     titulo: str | None,
     genero_id: int | None = None,
 ) -> list[LibroResumen]:
-    # Una sola consulta: libro JOIN editorial JOIN género.
-    consulta = select(Libro).options(joinedload(Libro.editorial), joinedload(Libro.genero))
-    if genero_id is not None:
-        consulta = consulta.where(Libro.genero_id == genero_id)
-    if titulo:
-        # RN-11: parámetro ligado, sin distinguir mayúsculas. autoescape hace
-        # que % y _ del texto buscado se tomen literalmente.
-        consulta = consulta.where(Libro.titulo.icontains(titulo, autoescape=True))
-    consulta = consulta.order_by(Libro.id).limit(limit).offset(offset)
-    libros = (await session.exec(consulta)).all()
+    libros = await uow.libros.listar(limit, offset, titulo, genero_id)
     return [LibroResumen.desde_modelo(libro) for libro in libros]
 
 
 # ---------- Escrituras ----------
 
 
-async def crear_libro(session: AsyncSession, datos: LibroCreate) -> LibroRead:
+async def crear_libro(uow: UnitOfWork, datos: LibroCreate) -> LibroRead:
     # Agregación: viajan los ids de la editorial, del género (opcional) y de cada autor. No se
     # consulta antes si existen: se escribe y, si la base rechaza la clave
     # foránea, se responde 409 (C-04).
@@ -88,40 +64,19 @@ async def crear_libro(session: AsyncSession, datos: LibroCreate) -> LibroRead:
             LibroAutor(autor_id=autoria.autor_id, rol=autoria.rol, orden=autoria.orden)
         )
 
-    session.add(libro)
-    try:
-        await session.commit()
-    except IntegrityError as error:
-        await session.rollback()
-        raise http_409_por_integridad(
-            error,
-            detalle_unique=_DETALLE_UNIQUE,  # RN-01 / C-02
-            detalle_fk=_DETALLE_FK,
-            detalle_check=_DETALLE_CHECK,
-        ) from None
-
-    return await obtener_libro(session, libro.id)
+    uow.libros.agregar(libro)
+    await _commit(uow)
+    return await obtener_libro(uow, libro.id)
 
 
-async def actualizar_libro(session: AsyncSession, libro_id: int, datos: LibroUpdate) -> LibroRead:
-    libro = await session.get(Libro, libro_id)
+async def actualizar_libro(uow: UnitOfWork, libro_id: int, datos: LibroUpdate) -> LibroRead:
+    libro = await uow.libros.obtener(libro_id)
     if libro is None:
-        raise _no_existe()
+        raise NoEncontrado(_DETALLE_NO_EXISTE)
 
-    # PATCH: sólo los campos enviados.
+    # PATCH: sólo los campos enviados; los autores no se tocan.
     for campo, valor in datos.model_dump(exclude_unset=True).items():
         setattr(libro, campo, valor)
 
-    session.add(libro)
-    try:
-        await session.commit()
-    except IntegrityError as error:
-        await session.rollback()
-        raise http_409_por_integridad(
-            error,
-            detalle_unique=_DETALLE_UNIQUE,
-            detalle_fk=_DETALLE_FK,
-            detalle_check=_DETALLE_CHECK,
-        ) from None
-
-    return await obtener_libro(session, libro_id)
+    await _commit(uow)
+    return await obtener_libro(uow, libro_id)

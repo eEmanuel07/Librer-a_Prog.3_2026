@@ -24,6 +24,7 @@ from app.core.errors import conflicto_por_integridad
 from app.modules.autores.repository import AutorRepository
 from app.modules.editoriales.repository import EditorialRepository
 from app.modules.generos.repository import GeneroRepository
+from app.modules.libros.repository import LibroRepository
 
 
 class UnitOfWork:
@@ -32,6 +33,7 @@ class UnitOfWork:
         self.editoriales = EditorialRepository(session)
         self.generos = GeneroRepository(session)
         self.autores = AutorRepository(session)
+        self.libros = LibroRepository(session)
 
     async def __aenter__(self) -> "UnitOfWork":
         return self
