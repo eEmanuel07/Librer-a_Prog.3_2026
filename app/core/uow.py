@@ -22,6 +22,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.database import get_session
 from app.core.errors import conflicto_por_integridad
 from app.modules.autores.repository import AutorRepository
+from app.modules.clientes.repository import ClienteRepository
 from app.modules.editoriales.repository import EditorialRepository
 from app.modules.generos.repository import GeneroRepository
 from app.modules.libros.repository import LibroRepository
@@ -34,6 +35,7 @@ class UnitOfWork:
         self.generos = GeneroRepository(session)
         self.autores = AutorRepository(session)
         self.libros = LibroRepository(session)
+        self.clientes = ClienteRepository(session)
 
     async def __aenter__(self) -> "UnitOfWork":
         return self
