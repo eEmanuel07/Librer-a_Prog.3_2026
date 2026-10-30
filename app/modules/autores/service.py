@@ -1,59 +1,42 @@
-from fastapi import HTTPException, status
-from sqlalchemy.orm import joinedload
-from sqlmodel import select
-from sqlmodel.ext.asyncio.session import AsyncSession
-
+from app.core.errors import NoEncontrado
+from app.core.uow import UnitOfWork
 from app.modules.autores.models import Autor
 from app.modules.autores.schemas import AutorCreate, AutorRead, AutorUpdate, LibroDeAutor
-from app.modules.libros.models import LibroAutor
+
+_DETALLE_NO_EXISTE = "El autor no existe"
 
 
-def _no_existe() -> HTTPException:
-    return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El autor no existe")
-
-
-async def _buscar(session: AsyncSession, autor_id: int) -> Autor:
-    autor = await session.get(Autor, autor_id)
+async def _buscar(uow: UnitOfWork, autor_id: int) -> Autor:
+    autor = await uow.autores.obtener(autor_id)
     if autor is None:
-        raise _no_existe()
+        raise NoEncontrado(_DETALLE_NO_EXISTE)
     return autor
 
 
-# autor no tiene UNIQUE ni CHECK, por eso aca no hace falta traducir IntegrityError
-async def crear_autor(session: AsyncSession, datos: AutorCreate) -> AutorRead:
+# autor no tiene UNIQUE ni CHECK: el commit no tiene un 409 propio que dar
+async def crear_autor(uow: UnitOfWork, datos: AutorCreate) -> AutorRead:
     autor = Autor(**datos.model_dump())
-    session.add(autor)
-    await session.commit()
+    uow.autores.agregar(autor)
+    await uow.commit()
     return AutorRead.model_validate(autor, from_attributes=True)
 
 
-async def obtener_autor(session: AsyncSession, autor_id: int) -> AutorRead:
-    autor = await _buscar(session, autor_id)
+async def obtener_autor(uow: UnitOfWork, autor_id: int) -> AutorRead:
+    autor = await _buscar(uow, autor_id)
     return AutorRead.model_validate(autor, from_attributes=True)
 
 
-async def actualizar_autor(session: AsyncSession, autor_id: int, datos: AutorUpdate) -> AutorRead:
-    autor = await _buscar(session, autor_id)
+async def actualizar_autor(uow: UnitOfWork, autor_id: int, datos: AutorUpdate) -> AutorRead:
+    autor = await _buscar(uow, autor_id)
     for campo, valor in datos.model_dump(exclude_unset=True).items():
         setattr(autor, campo, valor)
-    session.add(autor)
-    await session.commit()
+    await uow.commit()
     return AutorRead.model_validate(autor, from_attributes=True)
 
 
 async def listar_libros_de_autor(
-    session: AsyncSession, autor_id: int, limit: int, offset: int
+    uow: UnitOfWork, autor_id: int, limit: int, offset: int
 ) -> list[LibroDeAutor]:
-    await _buscar(session, autor_id)
-    # se parte de libro_autor porque el rol y el orden son de la relacion;
-    # joinedload trae el libro en la misma consulta (sin N+1)
-    consulta = (
-        select(LibroAutor)
-        .where(LibroAutor.autor_id == autor_id)
-        .options(joinedload(LibroAutor.libro))
-        .order_by(LibroAutor.libro_id)
-        .limit(limit)
-        .offset(offset)
-    )
-    autorias = (await session.exec(consulta)).all()
+    await _buscar(uow, autor_id)
+    autorias = await uow.autores.listar_autorias(autor_id, limit, offset)
     return [LibroDeAutor.desde_modelo(a) for a in autorias]
