@@ -98,15 +98,43 @@ uvicorn app.main:app --reload
 
 ```
 app/
-  core/          configuración, sesión de base, errores 409 y paginación comunes
+  core/
+    config.py        configuración (.env)
+    database.py      motor y sesión de base (una por petición)
+    uow.py           Unit of Work: commit / rollback y acceso a los repositorios
+    errors.py        errores de dominio (NoEncontrado, Conflicto) y traducción de IntegrityError
+    pagination.py    paginación común (limit / offset)
   modules/
-    <modulo>/    models.py (tablas), schemas.py (DTO), service.py (lógica), router.py (endpoints)
-  main.py        crea la app y registra los routers
-migrations/      migraciones de Alembic
-scripts/seed.py  datos iniciales
-test/            pedidos .http por módulo
-evidencia/       salidas de consultas SQL (caso C-07)
+    <modulo>/        editoriales, generos, autores, libros, clientes, ventas
+      models.py      tablas
+      schemas.py     DTO de entrada y salida
+      repository.py  consultas
+      service.py     lógica de negocio
+      router.py      endpoints HTTP
+    health/          chequeos de vida y de base (sin capas: no tiene datos propios)
+  main.py            crea la app y registra los routers
+migrations/          migraciones de Alembic
+scripts/seed.py      datos iniciales
+test/                pedidos .http por módulo
+evidencia/           salidas de consultas SQL (caso C-07)
 ```
+
+### Arquitectura en capas
+
+Cada petición recorre las capas en este orden:
+
+```
+Router  ->  Service  ->  UoW (Unit of Work)  ->  Repository  ->  base
+```
+
+| Capa | Qué hace | Qué NO hace |
+|---|---|---|
+| **Router** (`router.py`) | Recibe la petición, la valida con los schemas, llama al service y traduce los errores de dominio a HTTP (`NoEncontrado` → 404, `Conflicto` → 409, con el mismo mensaje). | No tiene lógica, no consulta la base, no hace commit. |
+| **Service** (`service.py`) | La lógica de negocio: reglas, validaciones, armar los objetos y decidir cuándo se confirma la transacción (`await uow.commit(...)`). Si falla lanza `NoEncontrado` o `Conflicto`. Si necesita datos de otro módulo los pide a ese repositorio (por ejemplo `uow.libros.precios(...)` en ventas). | No importa nada de HTTP, no escribe consultas, no hace commit por su cuenta. |
+| **UoW** (`core/uow.py`) | Tiene la sesión de la petición y expone los repositorios (`uow.editoriales`, `uow.libros`, ...). Es el único lugar donde se hace commit; si el commit choca con una restricción de la base lo traduce a `Conflicto` con mensaje propio, y si algo falla hace rollback de todo. | No tiene lógica, no sabe de HTTP, no escribe consultas. |
+| **Repository** (`repository.py`) | Solo consultas: `select` con parámetros ligados y carga anticipada (`joinedload` / `selectinload`), y `add` de objetos nuevos. | No tiene lógica, no sabe de HTTP, no hace commit. |
+
+Los **schemas** son los DTO de entrada y salida; los **models** son las tablas.
 
 ## Módulos y endpoints
 

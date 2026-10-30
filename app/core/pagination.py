@@ -13,9 +13,9 @@ Uso típico en un router::
     @router.get("/")
     async def listar(
         pag: Paginacion = Depends(paginacion),
-        session: AsyncSession = Depends(get_session),
+        uow: UnitOfWork = Depends(get_uow),
     ) -> list[AlgoRead]:
-        return await service.listar(session, limit=pag.limit, offset=pag.offset)
+        return await service.listar(uow, limit=pag.limit, offset=pag.offset)
 """
 
 from dataclasses import dataclass

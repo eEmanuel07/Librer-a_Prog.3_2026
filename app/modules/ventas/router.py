@@ -1,8 +1,8 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, status
-from sqlmodel.ext.asyncio.session import AsyncSession
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 
-from app.core.database import get_session
+from app.core.errors import Conflicto, NoEncontrado
 from app.core.pagination import Paginacion, paginacion
+from app.core.uow import UnitOfWork, get_uow
 from app.modules.ventas import service
 from app.modules.ventas.schemas import VentaCreate, VentaRead, VentaResumen
 
@@ -15,10 +15,14 @@ router = APIRouter(prefix="/ventas", tags=["ventas"])
 async def crear_venta(
     datos: VentaCreate,
     tareas: BackgroundTasks,
-    session: AsyncSession = Depends(get_session),
+    uow: UnitOfWork = Depends(get_uow),
 ) -> VentaRead:
-    venta = await service.crear_venta(session, datos)
-    # Se agenda el aviso; corre después de enviar la respuesta.
+    try:
+        venta = await service.crear_venta(uow, datos)
+    except Conflicto as error:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=error.mensaje) from None
+    # El service ya hizo commit. Se agenda el aviso con datos simples (no la
+    # sesión ni el UoW); corre después de enviar la respuesta.
     tareas.add_task(service.avisar_comprobante, venta.id, venta.cliente.email, venta.total)
     return venta
 
@@ -26,14 +30,17 @@ async def crear_venta(
 @router.get("/", response_model=list[VentaResumen])
 async def listar_ventas(
     pag: Paginacion = Depends(paginacion),  # RN-10: helper común
-    session: AsyncSession = Depends(get_session),
+    uow: UnitOfWork = Depends(get_uow),
 ) -> list[VentaResumen]:
-    return await service.listar_ventas(session, limit=pag.limit, offset=pag.offset)
+    return await service.listar_ventas(uow, limit=pag.limit, offset=pag.offset)
 
 
 @router.get("/{venta_id}", response_model=VentaRead)
 async def obtener_venta(
     venta_id: int,
-    session: AsyncSession = Depends(get_session),
+    uow: UnitOfWork = Depends(get_uow),
 ) -> VentaRead:
-    return await service.obtener_venta(session, venta_id)
+    try:
+        return await service.obtener_venta(uow, venta_id)
+    except NoEncontrado as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error.mensaje) from None

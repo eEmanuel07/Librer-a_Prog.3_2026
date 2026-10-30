@@ -1,28 +1,17 @@
-"""Traducción de errores de integridad a respuestas HTTP propias (RN-12).
+"""Errores de dominio y traducción de errores de integridad (RN-12).
 
-Todo el equipo usa este helper en sus services: ningún error devuelve al
-cliente texto interno de la base (nombres de tablas, restricciones o trazas).
+Los services lanzan ``NoEncontrado`` y ``Conflicto``; el router de cada
+módulo los pasa a 404 / 409 con el mismo mensaje. El commit del UnitOfWork
+traduce el ``IntegrityError`` con ``conflicto_por_integridad``: ningún error
+devuelve al cliente texto interno de la base (nombres de tablas,
+restricciones o trazas).
 
 Uso típico en un service::
 
-    from sqlalchemy.exc import IntegrityError
-
-    from app.core.errors import http_409_por_integridad
-
-    try:
-        session.add(obj)
-        await session.commit()
-        await session.refresh(obj)
-    except IntegrityError as exc:
-        await session.rollback()
-        raise http_409_por_integridad(
-            exc,
-            detalle_unique="Email en uso.",
-            detalle_fk="Referencia a un recurso inexistente.",
-        )
+    uow.editoriales.agregar(editorial)
+    await uow.commit(detalle_unique="Ya existe una editorial con ese nombre")
 """
 
-from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
 # Códigos de estado de PostgreSQL (los expone el driver asyncpg en
@@ -32,26 +21,44 @@ _SQLSTATE_FOREIGN_KEY = "23503"
 _SQLSTATE_CHECK = "23514"
 
 
-def http_409_por_integridad(
+class ErrorDeDominio(Exception):
+    """Error de negocio con mensaje propio, sin nada de HTTP.
+
+    Los services lanzan sus subclases y cada router las traduce a un código
+    de estado (NoEncontrado -> 404, Conflicto -> 409).
+    """
+
+    def __init__(self, mensaje: str) -> None:
+        super().__init__(mensaje)
+        self.mensaje = mensaje
+
+
+class NoEncontrado(ErrorDeDominio):
+    """El recurso pedido no existe."""
+
+
+class Conflicto(ErrorDeDominio):
+    """La base rechazó la escritura (unicidad, clave foránea o check)."""
+
+
+def conflicto_por_integridad(
     exc: IntegrityError,
     *,
     detalle_unique: str = "El registro ya existe.",
     detalle_fk: str = "La operación referencia un recurso inexistente.",
     detalle_check: str = "Los datos violan una regla de la base.",
-) -> HTTPException:
-    """Convierte un ``IntegrityError`` en un 409 con mensaje propio.
+) -> Conflicto:
+    """Convierte un ``IntegrityError`` en un ``Conflicto`` con mensaje propio.
 
     La consigna (Ej. 4) pide 409 siempre que la base rechace la escritura:
     unicidad (RN-01, RN-02, RN-09), clave foránea (C-04, C-05) o check.
     """
     sqlstate = getattr(getattr(exc, "orig", None), "sqlstate", None)
     if sqlstate == _SQLSTATE_UNIQUE:
-        detail = detalle_unique
-    elif sqlstate == _SQLSTATE_FOREIGN_KEY:
-        detail = detalle_fk
-    elif sqlstate == _SQLSTATE_CHECK:
-        detail = detalle_check
-    else:
-        # Sin sqlstate reconocible: mensaje genérico, nunca ``str(exc)``.
-        detail = "No se pudo completar la escritura."
-    return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
+        return Conflicto(detalle_unique)
+    if sqlstate == _SQLSTATE_FOREIGN_KEY:
+        return Conflicto(detalle_fk)
+    if sqlstate == _SQLSTATE_CHECK:
+        return Conflicto(detalle_check)
+    # Sin sqlstate reconocible: mensaje genérico, nunca ``str(exc)``.
+    return Conflicto("No se pudo completar la escritura.")
