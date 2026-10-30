@@ -26,6 +26,7 @@ from app.modules.clientes.repository import ClienteRepository
 from app.modules.editoriales.repository import EditorialRepository
 from app.modules.generos.repository import GeneroRepository
 from app.modules.libros.repository import LibroRepository
+from app.modules.ventas.repository import VentaRepository
 
 
 class UnitOfWork:
@@ -36,6 +37,7 @@ class UnitOfWork:
         self.autores = AutorRepository(session)
         self.libros = LibroRepository(session)
         self.clientes = ClienteRepository(session)
+        self.ventas = VentaRepository(session)
 
     async def __aenter__(self) -> "UnitOfWork":
         return self

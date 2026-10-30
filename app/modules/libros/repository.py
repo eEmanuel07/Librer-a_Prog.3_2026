@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from decimal import Decimal
 
 from sqlalchemy.orm import joinedload, selectinload
 from sqlmodel import select
@@ -47,6 +48,11 @@ class LibroRepository:
             consulta = consulta.where(Libro.titulo.icontains(titulo, autoescape=True))
         consulta = consulta.order_by(Libro.id).limit(limit).offset(offset)
         return (await self.session.exec(consulta)).all()
+
+    async def precios(self, libro_ids: list[int]) -> dict[int, Decimal]:
+        """Precio de cada libro pedido; los que no existen no aparecen."""
+        filas = await self.session.exec(select(Libro.id, Libro.precio).where(Libro.id.in_(libro_ids)))
+        return dict(filas.all())
 
     def agregar(self, libro: Libro) -> None:
         self.session.add(libro)
