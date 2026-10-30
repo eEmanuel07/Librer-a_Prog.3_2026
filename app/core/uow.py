@@ -71,9 +71,6 @@ class UnitOfWork:
                 detalle_check=detalle_check,
             ) from None
 
-    async def rollback(self) -> None:
-        await self.session.rollback()
-
 
 async def get_uow(session: AsyncSession = Depends(get_session)) -> AsyncGenerator[UnitOfWork, None]:
     """Un UoW por petición, sobre la misma sesión que da ``get_session``."""

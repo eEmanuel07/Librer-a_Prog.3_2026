@@ -1,34 +1,17 @@
 """Errores de dominio y traducción de errores de integridad (RN-12).
 
-Los módulos con Repository + Unit of Work usan ``NoEncontrado`` y
-``Conflicto``: el commit del UoW traduce el ``IntegrityError`` con
-``conflicto_por_integridad`` y el router los pasa a 404 / 409.
-
-Los módulos que todavía no migraron usan ``http_409_por_integridad``.
-
-Todo el equipo usa este helper en sus services: ningún error devuelve al
-cliente texto interno de la base (nombres de tablas, restricciones o trazas).
+Los services lanzan ``NoEncontrado`` y ``Conflicto``; el router de cada
+módulo los pasa a 404 / 409 con el mismo mensaje. El commit del UnitOfWork
+traduce el ``IntegrityError`` con ``conflicto_por_integridad``: ningún error
+devuelve al cliente texto interno de la base (nombres de tablas,
+restricciones o trazas).
 
 Uso típico en un service::
 
-    from sqlalchemy.exc import IntegrityError
-
-    from app.core.errors import http_409_por_integridad
-
-    try:
-        session.add(obj)
-        await session.commit()
-        await session.refresh(obj)
-    except IntegrityError as exc:
-        await session.rollback()
-        raise http_409_por_integridad(
-            exc,
-            detalle_unique="Email en uso.",
-            detalle_fk="Referencia a un recurso inexistente.",
-        )
+    uow.editoriales.agregar(editorial)
+    await uow.commit(detalle_unique="Ya existe una editorial con ese nombre")
 """
 
-from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
 # Códigos de estado de PostgreSQL (los expone el driver asyncpg en
@@ -58,38 +41,6 @@ class Conflicto(ErrorDeDominio):
     """La base rechazó la escritura (unicidad, clave foránea o check)."""
 
 
-def _detalle_por_integridad(
-    exc: IntegrityError, *, detalle_unique: str, detalle_fk: str, detalle_check: str
-) -> str:
-    sqlstate = getattr(getattr(exc, "orig", None), "sqlstate", None)
-    if sqlstate == _SQLSTATE_UNIQUE:
-        return detalle_unique
-    if sqlstate == _SQLSTATE_FOREIGN_KEY:
-        return detalle_fk
-    if sqlstate == _SQLSTATE_CHECK:
-        return detalle_check
-    # Sin sqlstate reconocible: mensaje genérico, nunca ``str(exc)``.
-    return "No se pudo completar la escritura."
-
-
-def http_409_por_integridad(
-    exc: IntegrityError,
-    *,
-    detalle_unique: str = "El registro ya existe.",
-    detalle_fk: str = "La operación referencia un recurso inexistente.",
-    detalle_check: str = "Los datos violan una regla de la base.",
-) -> HTTPException:
-    """Convierte un ``IntegrityError`` en un 409 con mensaje propio.
-
-    La consigna (Ej. 4) pide 409 siempre que la base rechace la escritura:
-    unicidad (RN-01, RN-02, RN-09), clave foránea (C-04, C-05) o check.
-    """
-    detail = _detalle_por_integridad(
-        exc, detalle_unique=detalle_unique, detalle_fk=detalle_fk, detalle_check=detalle_check
-    )
-    return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
-
-
 def conflicto_por_integridad(
     exc: IntegrityError,
     *,
@@ -97,12 +48,17 @@ def conflicto_por_integridad(
     detalle_fk: str = "La operación referencia un recurso inexistente.",
     detalle_check: str = "Los datos violan una regla de la base.",
 ) -> Conflicto:
-    """Igual que ``http_409_por_integridad`` pero como error de dominio.
+    """Convierte un ``IntegrityError`` en un ``Conflicto`` con mensaje propio.
 
-    Lo usa el commit del UnitOfWork: mismos mensajes propios, sin HTTP.
+    La consigna (Ej. 4) pide 409 siempre que la base rechace la escritura:
+    unicidad (RN-01, RN-02, RN-09), clave foránea (C-04, C-05) o check.
     """
-    return Conflicto(
-        _detalle_por_integridad(
-            exc, detalle_unique=detalle_unique, detalle_fk=detalle_fk, detalle_check=detalle_check
-        )
-    )
+    sqlstate = getattr(getattr(exc, "orig", None), "sqlstate", None)
+    if sqlstate == _SQLSTATE_UNIQUE:
+        return Conflicto(detalle_unique)
+    if sqlstate == _SQLSTATE_FOREIGN_KEY:
+        return Conflicto(detalle_fk)
+    if sqlstate == _SQLSTATE_CHECK:
+        return Conflicto(detalle_check)
+    # Sin sqlstate reconocible: mensaje genérico, nunca ``str(exc)``.
+    return Conflicto("No se pudo completar la escritura.")
