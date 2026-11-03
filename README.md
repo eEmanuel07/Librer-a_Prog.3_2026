@@ -49,10 +49,18 @@ Copiar `env.example` como `.env` (el `.env` no se sube al repositorio):
 cp env.example .env
 ```
 
+La configuración la lee la clase `Settings` (`app/core/config.py`, pydantic-settings)
+desde las variables de entorno o el `.env`. Todas las variables, con su explicación,
+están en `env.example`. Las importantes:
+
 | Variable | Para qué sirve |
 |---|---|
-| `DATABASE_URL` | Conexión a PostgreSQL con el driver async: `postgresql+asyncpg://USUARIO:CONTRASEÑA@localhost:5432/libreria`. El puerto tiene que coincidir con el del contenedor (por defecto 5432, igual que en env.example). Si ya tenés otro PostgreSQL usando el 5432, mapeá el contenedor a otro puerto (por ejemplo 5433) y poné ese mismo puerto en tu .env. |
-| `SQL_ECHO` | `true` muestra en la consola cada consulta SQL (sirve para la evidencia del caso C-07). Por defecto `false`. |
+| `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_HOST`, `POSTGRES_PORT` | Con estas se arma sola la dirección de la base (driver `postgresql+asyncpg`). `POSTGRES_PASSWORD` es **obligatoria**. El puerto tiene que coincidir con el del contenedor (por defecto 5432); si ya tenés otro PostgreSQL usando el 5432, mapeá el contenedor a otro puerto (por ejemplo 5433) y poné ese mismo puerto acá. |
+| `JWT_SECRET` | Clave de firma de los tokens. **Obligatoria**, de al menos 32 caracteres. Se genera con `python -c "import secrets; print(secrets.token_urlsafe(32))"`. |
+| `SQL_ECHO` | `true` muestra en la consola cada consulta SQL. Por defecto `false`. |
+
+Si falta `POSTGRES_PASSWORD` o `JWT_SECRET`, la aplicación no arranca y el error dice
+qué variable falta.
 
 ## Base de datos
 
@@ -73,7 +81,7 @@ Las veces siguientes alcanza con `docker start libreria-db`.
 alembic upgrade head
 ```
 
-Alembic toma la URL de `DATABASE_URL` (`.env`), nunca de `alembic.ini`.
+Alembic toma la dirección de `Settings` (las variables `POSTGRES_*` del `.env`), nunca de `alembic.ini`.
 
 ## Datos iniciales
 
@@ -171,9 +179,9 @@ y los ids de los datos iniciales, así que conviene correr `python -m scripts.se
 
 - `requirements.txt` fija **SQLAlchemy en `<2.1`** a propósito: en Windows el archivo
   compilado de la 2.1 puede quedar bloqueado y la instalación falla. No lo cambien.
-- Si existe una variable de entorno `DATABASE_URL` del sistema, **pisa al `.env`**
-  (`python-dotenv` no sobrescribe variables ya definidas). Si la API se conecta a otra
-  base, revisá y borrá esa variable.
+- Las variables de entorno del sistema **pisan al `.env`**. Si la API se conecta a otra
+  base, revisá que no haya una `POSTGRES_HOST`, `POSTGRES_DB` o `POSTGRES_PORT` del
+  sistema. (`DATABASE_URL` ya no se usa: si quedó en tu `.env` viejo, se ignora.)
 
 ## Evidencia de consultas (C-07)
 
