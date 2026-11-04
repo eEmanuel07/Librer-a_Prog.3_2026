@@ -18,6 +18,7 @@ from app.modules.ventas.router import router as ventas_router
 # modelos tienen que estar importados antes del primer uso, aunque el módulo
 # dueño todavía no registre su router.
 import app.modules.clientes.models  # noqa: F401
+import app.modules.usuarios.models  # noqa: F401
 import app.modules.ventas.models  # noqa: F401
 
 
