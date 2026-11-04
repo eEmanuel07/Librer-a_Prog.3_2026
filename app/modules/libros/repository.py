@@ -5,17 +5,24 @@ from sqlalchemy.orm import joinedload, selectinload
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.repository import SoftDeleteRepository
 from app.modules.libros.models import Libro, LibroAutor
 
 
-class LibroRepository:
-    """Solo consultas sobre libros. No hace commit: eso es del UoW."""
+class LibroRepository(SoftDeleteRepository[Libro]):
+    """Consultas sobre libros. No hace commit: eso es del UoW.
+
+    Un libro dado de baja deja de aparecer en el catálogo (listado, detalle) y
+    no se puede vender. Sus datos se conservan: las ventas viejas lo siguen
+    mostrando porque lo cargan por la relación, no por este repositorio.
+    """
 
     def __init__(self, session: AsyncSession) -> None:
-        self.session = session
+        super().__init__(session, Libro)
 
     async def obtener(self, libro_id: int) -> Libro | None:
-        return await self.session.get(Libro, libro_id)
+        """El libro vigente con ese id."""
+        return await self.get_by_id(libro_id)
 
     async def obtener_con_relaciones(self, libro_id: int) -> Libro | None:
         # Cantidad fija de consultas, sin importar cuántos autores tenga (C-07):
@@ -23,7 +30,7 @@ class LibroRepository:
         #   2) autorías JOIN autor              -> selectinload (colección) + joinedload (a uno)
         consulta = (
             select(Libro)
-            .where(Libro.id == libro_id)
+            .where(Libro.id == libro_id, Libro.borrado_en.is_(None))
             .options(
                 joinedload(Libro.editorial),
                 joinedload(Libro.genero),
@@ -39,7 +46,11 @@ class LibroRepository:
         self, limit: int, offset: int, titulo: str | None, genero_id: int | None
     ) -> Sequence[Libro]:
         # Una sola consulta: libro JOIN editorial JOIN género.
-        consulta = select(Libro).options(joinedload(Libro.editorial), joinedload(Libro.genero))
+        consulta = (
+            select(Libro)
+            .where(Libro.borrado_en.is_(None))
+            .options(joinedload(Libro.editorial), joinedload(Libro.genero))
+        )
         if genero_id is not None:
             consulta = consulta.where(Libro.genero_id == genero_id)
         if titulo:
@@ -50,8 +61,10 @@ class LibroRepository:
         return (await self.session.exec(consulta)).all()
 
     async def precios(self, libro_ids: list[int]) -> dict[int, Decimal]:
-        """Precio de cada libro pedido; los que no existen no aparecen."""
-        filas = await self.session.exec(select(Libro.id, Libro.precio).where(Libro.id.in_(libro_ids)))
+        """Precio de cada libro vigente pedido; los inexistentes o dados de baja no aparecen."""
+        filas = await self.session.exec(
+            select(Libro.id, Libro.precio).where(Libro.id.in_(libro_ids), Libro.borrado_en.is_(None))
+        )
         return dict(filas.all())
 
     def agregar(self, libro: Libro) -> None:
