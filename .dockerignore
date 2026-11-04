@@ -1,0 +1,27 @@
+# Lo que no entra en la imagen. Lo que se hornea en una capa queda ahí para
+# siempre, aunque una capa posterior lo borre: por eso se filtra acá.
+
+# Secretos y configuración local: la configuración entra al correr el
+# contenedor (--env-file), nunca dentro de la imagen.
+.env
+.env.*
+
+# Entornos y cachés de Python: la imagen instala sus propias dependencias.
+.venv/
+venv/
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+
+# Control de versiones y editores.
+.git/
+.gitignore
+.github/
+.idea/
+.vscode/
+
+# Lo que no se usa para correr la aplicación.
+test/
+evidencia/
+Dockerfile
+.dockerignore
