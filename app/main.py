@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
 from app.core.config import get_settings
 from app.core.database import crear_fabrica_sesiones, crear_motor
+from app.core.paginacion import PaginaInexistente
 from app.modules.autores.router import router as autores_router
 from app.modules.clientes.router import router as clientes_router
 from app.modules.editoriales.router import router as editoriales_router
@@ -30,6 +32,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Librería", lifespan=lifespan)
+
+
+@app.exception_handler(PaginaInexistente)
+async def pagina_inexistente(request: Request, error: PaginaInexistente) -> JSONResponse:
+    # Una página más allá de la última es un parámetro que no cumple el
+    # contrato: 422, igual que size=500. Vale para todos los listados.
+    return JSONResponse(status_code=422, content={"detail": error.mensaje})
+
 
 app.include_router(health_router)
 app.include_router(editoriales_router)
