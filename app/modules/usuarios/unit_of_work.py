@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.database import get_session
-from app.core.uow import UnitOfWork
+from app.core.unit_of_work import UnitOfWork
 from app.modules.usuarios.models import IntentoAcceso
 from app.modules.usuarios.repository import (
     AsignacionRolRepository,
