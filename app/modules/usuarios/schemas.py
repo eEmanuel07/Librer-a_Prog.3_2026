@@ -1,6 +1,6 @@
 """Contratos de entrada y salida para el módulo usuarios."""
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
 from app.core.security import PasswordBcrypt
 
@@ -45,3 +45,39 @@ class LoginResponse(BaseModel):
     mensaje: str = "Sesión iniciada"
     debe_cambiar_password: bool
     expira_en_segundos: int
+
+
+def _normalizar_email(valor: object) -> object:
+    return valor.strip().lower() if isinstance(valor, str) else valor
+
+
+def _validar_nombre_no_vacio(valor: object) -> str:
+    if not isinstance(valor, str) or not valor.strip():
+        raise ValueError("El nombre no puede estar vacío.")
+    return valor.strip()
+
+
+# --- Contratos de Registro ---
+
+
+class RegistroRequest(StrictSchema):
+    """Datos de entrada para auto-registro de clientes en la web (RN-02)."""
+
+    nombre: str
+    email: EmailStr
+    password: PasswordBcrypt
+
+    _email_normalizado = field_validator("email", mode="before")(_normalizar_email)
+    _nombre_normalizado = field_validator("nombre", mode="before")(_validar_nombre_no_vacio)
+
+
+class RegistroResponse(BaseModel):
+    """Respuesta tras auto-registro exitoso de cliente."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: EmailStr
+    nombre: str
+    cliente_id: int
+    mensaje: str = "Usuario registrado exitosamente"

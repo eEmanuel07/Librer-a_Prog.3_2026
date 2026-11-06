@@ -6,6 +6,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.database import get_session
 from app.core.unit_of_work import UnitOfWork
+from app.modules.clientes.repository import ClienteRepository
 from app.modules.usuarios.models import IntentoAcceso
 from app.modules.usuarios.repository import (
     AsignacionRolRepository,
@@ -22,6 +23,7 @@ class UsuarioUnitOfWork(UnitOfWork):
         self.usuarios = UsuarioRepository(session)
         self.asignaciones_rol = AsignacionRolRepository(session)
         self.intentos_acceso = IntentoAccesoRepository(session)
+        self.clientes = ClienteRepository(session)
 
 
 def get_usuario_uow(session: AsyncSession = Depends(get_session)) -> UsuarioUnitOfWork:

@@ -26,6 +26,7 @@
 | `b6-migracion-3` | B6 | Belén | [#76](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/76) | Mergeado y archivado (change retroactivo) | `openspec/specs/esquema-base-datos` |
 | `b4-unit-of-work` | B4 | Belén | [#77](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/77) | Mergeado y archivado | `openspec/specs/transacciones` |
 | `b2-lifespan-health` | B2 | Belén | por abrir | En revisión (archivado en su rama) | `openspec/specs/ciclo-de-vida-y-salud` |
+| `h3-auth-registro` | H3 | Hernán | por abrir | En revisión (archivado en su rama) | `openspec/specs/autenticacion` |
 
 La fundación de Active Stack (`knowledge-base/`, `CHANGES.md`, `AGENTS.md`, `CLAUDE.md`) quedó mergeada en [#78](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/78). Las demás tareas `[x]` (incluida E6 en [#79](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/79)) no tienen change en `openspec/`.
 
@@ -276,7 +277,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `05_reglas_de_negocio.md` RN-11 · `04_modelo_de_datos.md` §Invariante
 
 ### [H3] `auth-registro` · #39
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[~]` en revisión (PR listo)
 - **Scope**: `POST /auth/registro`: hash antes de la transacción; usuario, rol CLIENTE y ficha en **un solo** bloque (RN-02); 409 sin filas sueltas ni apropiarse de la ficha (C-02)
 - **Dependencias**: H1, H2, B4
 - **Governance**: CRITICO

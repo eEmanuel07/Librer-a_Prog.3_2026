@@ -7,12 +7,15 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import Settings
-from app.core.security import crear_access_token, verificar_password
-from app.modules.usuarios.models import Usuario
+from app.core.security import crear_access_token, hashear_password, verificar_password
+from app.modules.clientes.models import Cliente
+from app.modules.usuarios.models import AsignacionRol, Usuario
 from app.modules.usuarios.schemas import (
     CredencialesInvalidasError,
     LimiteIntentosError,
     LoginRequest,
+    RegistroRequest,
+    RegistroResponse,
 )
 from app.modules.usuarios.unit_of_work import UsuarioUnitOfWork, registrar_intento_acceso
 
@@ -80,3 +83,55 @@ async def login(
 
     token = crear_access_token(usuario.id, roles, settings=settings)
     return usuario, token
+
+
+async def registrar(
+    datos: RegistroRequest,
+    uow: UsuarioUnitOfWork,
+    settings: Settings,
+) -> RegistroResponse:
+    """Registra un nuevo usuario y su ficha de cliente vinculada (RN-02).
+
+    1. Calcula el hash bcrypt antes de abrir la transacción (fuera del pool).
+    2. En un solo bloque del UoW crea:
+       - Usuario (activo=True, debe_cambiar_password=False)
+       - AsignacionRol (rol="CLIENTE", desde=ahora)
+       - Cliente (nombre=datos.nombre, email=datos.email, usuario_id=usuario.id)
+    3. Si el email ya existe (en usuario o cliente), la base rechaza con IntegrityError
+       y el UoW revierte la transacción levantando Conflicto (409) con mensaje propio.
+    """
+    password_hash = await hashear_password(datos.password, settings=settings)
+    ahora = datetime.now(timezone.utc)
+
+    async with uow.con_mensajes(unique="El correo electrónico ya está registrado"):
+        usuario = Usuario(
+            nombre=datos.nombre,
+            email=datos.email,
+            password_hash=password_hash,
+            activo=True,
+            debe_cambiar_password=False,
+        )
+        await uow.usuarios.add(usuario)
+
+        asignacion = AsignacionRol(
+            usuario_id=usuario.id,
+            rol="CLIENTE",
+            desde=ahora,
+        )
+        await uow.asignaciones_rol.add(asignacion)
+
+        cliente = Cliente(
+            nombre=datos.nombre,
+            email=datos.email,
+            usuario_id=usuario.id,
+        )
+        uow.clientes.agregar(cliente)
+        await uow.session.flush()
+
+    return RegistroResponse(
+        id=usuario.id,
+        email=usuario.email,
+        nombre=usuario.nombre,
+        cliente_id=cliente.id,
+        mensaje="Usuario registrado exitosamente",
+    )
