@@ -5,7 +5,7 @@
 > **Leer este archivo antes de ejecutar cualquier `/opsx:propose`.**
 >
 > **IDs:** se usan los códigos de las issues (`B4`, `H3`…), donde la letra es de quien la hace, y no `C-NN`, porque la consigna ya usa `C-01…C-16` para los **casos de prueba**.
-> **Estado** al 2026-11-05, según el **estado real de los PR** y no sólo el del tablero: `[x]` mergeado en `main` · `[~]` PR abierto, en revisión · `[ ]` pendiente.
+> **Estado** al 2026-11-06, según el **estado real de los PR** y no sólo el del tablero: `[x]` mergeado en `main` · `[~]` PR abierto, en revisión · `[ ]` pendiente.
 > 🔓 **Destraba** marca la tarea que, al terminarse, habilita a otras.
 
 ---
@@ -23,10 +23,11 @@
 | Change | Tarea | Responsable | PR | Estado | Spec que deja |
 |---|---|---|---|---|---|
 | `h4-auth-login` | H4 | Hernán | [#75](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/75) | Mergeado y archivado | `openspec/specs/autenticacion` |
-| `b6-migracion-3` | B6 | Belén | [#76](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/76) | En revisión (change retroactivo, ya archivado en su rama) | `openspec/specs/esquema-base-datos` |
-| `b4-unit-of-work` | B4 | Belén | [#77](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/77) | En revisión (archivado en su rama) | `openspec/specs/transacciones` |
+| `b6-migracion-3` | B6 | Belén | [#76](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/76) | Mergeado y archivado (change retroactivo) | `openspec/specs/esquema-base-datos` |
+| `b4-unit-of-work` | B4 | Belén | [#77](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/77) | Mergeado y archivado | `openspec/specs/transacciones` |
+| `b2-lifespan-health` | B2 | Belén | por abrir | En revisión (archivado en su rama) | `openspec/specs/ciclo-de-vida-y-salud` |
 
-Las demás tareas `[x]` se hicieron antes de OpenSpec y no tienen change.
+La fundación de Active Stack (`knowledge-base/`, `CHANGES.md`, `AGENTS.md`, `CLAUDE.md`) quedó mergeada en [#78](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/78). Las demás tareas `[x]` (incluida E6 en [#79](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/79)) no tienen change en `openspec/`.
 
 ---
 
@@ -34,22 +35,22 @@ Las demás tareas `[x]` se hicieron antes de OpenSpec y no tienen change.
 
 ```
 FASE 0 · Fundamentos
-B1 Settings [x] ──┬── B2 Lifespan y health [ ]
+B1 Settings [x] ──┬── B2 Lifespan y health [~]
                   └── H2 security.py [x] ───────────────┐
 B3 BaseRepository [x] ──┬── E2 SoftDeleteRepository [x] │
-                        └── B4 UnitOfWork [~] 🔓 ───────┼──┬── R1 get_usuario_actual ──┬── R2 requiere_rol 🔓
+                        └── B4 UnitOfWork [x] 🔓 ───────┼──┬── R1 get_usuario_actual ──┬── R2 requiere_rol 🔓
 B5 Paginación [x]                                       │  │                           ├── R3 dos grupos de rutas
-J1 Dockerfile [x] ── J2 probar imagen [~] ── E8 VPS ── E9 DEPLOY.md
+J1 Dockerfile [x] ── J2 probar imagen [x] ── E8 VPS ── E9 DEPLOY.md
                                                         │  ├── R5 roles con vigencia ──┘ (R2 depende de R1 y R5)
 FASE 1 · Modelos y migraciones                          │  ├── H3 registro (también H1, H2)
 E0 nombres [x] ──┬── H1 modelos usuarios [x] ──┐        │  ├── R4 alta de personal (también R2) ── H6 logout/yo/cambio
-                 └── E1 modelos libros [x] ────┴── B6 Migración 3 [~] ── E6 Migración 4 (disparador)
+                 └── E1 modelos libros [x] ────┴── B6 Migración 3 [x] ── E6 Migración 4 (disparador) [x]
 E1 + E2 ── E3 punto único de stock [x] ──┐
 H1 ── H5 intento_acceso [x] ── H4 login [x] ── H6
                                          │
 FASE 2 · Funcionalidad (casi todo espera B4 y R2)
 R2 ──┬── E4 alta/PATCH/baja libros ──┐
-     ├── E5 reposición y movimientos ┼── E7 solo_agregado.sql + .http libros (también E6)
+     ├── E5 reposición y movimientos ┼── E7 solo_agregado.sql + .http libros [~] (también E6)
      ├── J3 venta con stock (también E3, B4) 🔓 ──┬── J4 aviso
      │                                            └── J5 detalle sin N+1 (también R1) ── J6 /mis-ventas, /ventas
      ├── J7 clientes con acceso
@@ -142,13 +143,13 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Governance**: CRITICO
 - **Leer antes**: `knowledge-base/08_arquitectura_propuesta.md` §Variables de entorno · `06_funcionalidades.md` §Ej. 1
 
-### [B2] `lifespan-y-health` · #31
-- **Estado**: `[ ]` pendiente — **disponible ahora**
+### [B2] `b2-lifespan-health` · #31
+- **Estado**: `[~]` en revisión (archivado en su rama)
 - **Scope**:
   - motor (con el tamaño del pool), fábrica de sesiones y hash ficticio creados en el lifespan, en `app.state`; `dispose()` al apagar
   - `get_session` con `expire_on_commit=False`
   - `GET /health/live` sin base; `GET /health/ready` con `SELECT 1` y 503
-  - revisar el `service.py` de `health` (la consigna pide sólo `router.py`)
+  - eliminado `service.py` de `health` (queda sólo `router.py`, resuelve IN-04)
 - **Dependencias**: B1
 - **Governance**: MEDIO
 - **Leer antes**: `06_funcionalidades.md` §Ej. 1 · `08_arquitectura_propuesta.md` · `10_preguntas_abiertas.md` IN-04
@@ -161,7 +162,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `06_funcionalidades.md` §Ej. 6 · `08_arquitectura_propuesta.md` §Patrones
 
 ### [B4] `b4-unit-of-work` · #33
-- **Estado**: `[~]` en revisión (PR #77)
+- **Estado**: `[x]` mergeado (PR #77)
 - **Scope**:
   - `app/core/unit_of_work.py`: confirma al salir, revierte ante una excepción, traduce `IntegrityError` a 409 con `con_mensajes()` y no cierra la sesión
   - un `unit_of_work.py` por módulo con `get_<módulo>_uow`
@@ -200,7 +201,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `11_entrega_y_despliegue.md` §La imagen
 
 ### [J2] `prueba-imagen` · #55
-- **Estado**: `[~]` en revisión (PR #74; el tablero dice *Todo*)
+- **Estado**: `[x]` mergeado en `despliegue` (PR #74; el tablero dice *Todo*)
 - **Scope**: probar la imagen en local y guardar la evidencia de D-01, D-05, D-06 y D-07
 - **Dependencias**: J1 · 🔓 Destraba: E8
 - **Governance**: ALTO
@@ -227,14 +228,14 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `04_modelo_de_datos.md` · `03_actores_y_roles.md`
 
 ### [B6] `b6-migracion-3` · #35
-- **Estado**: `[~]` en revisión (PR #76)
+- **Estado**: `[x]` mergeado (PR #76)
 - **Scope**: migración 3 (`4a775b04f730`) autogenerada y leída: tablas de acceso, `movimiento_stock`, `cliente.usuario_id` y `libro.borrado_en` con los índices parciales; FK `cliente_usuario_id_fkey` nombrada a mano. Probado `upgrade head → downgrade base → upgrade head` y `alembic check`
 - **Dependencias**: H1, E1 · 🔓 Destraba: E6
 - **Governance**: CRITICO
 - **Leer antes**: `04_modelo_de_datos.md` §Migraciones · `09_decisiones_y_supuestos.md` DD-01, DD-02
 
 ### [E6] `migracion-4-disparador` · #25
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` mergeado (PR #79)
 - **Scope**: migración 4 **escrita a mano**: función y disparador que rechazan UPDATE y DELETE sobre `movimiento_stock` (RN-12), leída y comentada; ida y vuelta en una base vacía
 - **Dependencias**: B6 · 🔓 Destraba: E7
 - **Governance**: ALTO
@@ -426,7 +427,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `06_funcionalidades.md` §Casos · `11_entrega_y_despliegue.md`
 
 ### [E7] `solo-agregado-y-http-libros` · #26
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[~]` en revisión (PR #80, parcial: caso C-14; C-13 y C-16 van en otro PR)
 - **Scope**: `test/solo_agregado.sql` (C-14), `.http` de libros (C-13, C-16) y captura de psql
 - **Dependencias**: E4, E5, E6 · 🔓 Destraba: B7
 - **Governance**: BAJO
@@ -476,8 +477,8 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 
 | Fase | Tareas | `[x]` | `[~]` | `[ ]` |
 |---|---|---|---|---|
-| 0 · Fundamentos | 9 | 6 | 2 | 1 |
-| 1 · Modelos y migraciones | 4 | 2 | 1 | 1 |
+| 0 · Fundamentos | 9 | 8 | 1 | 0 |
+| 1 · Modelos y migraciones | 4 | 4 | 0 | 0 |
 | 2 · Funcionalidad | 21 | 4 | 0 | 17 |
-| 3 · Cierre | 10 | 0 | 0 | 10 |
-| **Total** | **44** | **12** | **3** | **29** |
+| 3 · Cierre | 10 | 0 | 1 | 9 |
+| **Total** | **44** | **16** | **2** | **26** |

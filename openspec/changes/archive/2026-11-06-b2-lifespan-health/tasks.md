@@ -32,10 +32,14 @@
 
 ## 3. Verificación integral (sin commit)
 
-- [ ] 3.1 Probar con la aplicación real y el contenedor `libreria-db`:
+- [x] 3.1 Probar con la aplicación real y el contenedor `libreria-db`:
   - con `libreria-db` arriba: `GET /health/live` → `200 {"estado": "vivo"}` y `GET /health/ready` → `200 {"estado": "listo", "base": "ok"}` (`test/health.http`);
   - simulando la base caída **sin apagar el contenedor `libreria-db`**, levantando la app apuntando a un puerto donde no hay nada escuchando (por ejemplo `POSTGRES_PORT=5999`): la conexión se rechaza igual que con la base caída, `GET /health/ready` → `503 {"detail": "La base de datos no está disponible"}` y `GET /health/live` → `200 {"estado": "vivo"}` ("hecho cuando" de la issue #31).
-- [ ] 3.2 Correr `python -m unittest discover -s tests` y `openspec validate b2-lifespan-health --strict`, dejando asentada la evidencia en este `tasks.md`.
+  - **Resultado (2026-11-06):**
+    - Con `uvicorn app.main:app` y `libreria-db` arriba (puerto 5433): `GET /health/live` → `200 {"estado":"vivo"}` y `GET /health/ready` → `200 {"estado":"listo","base":"ok"}`.
+    - Con `uvicorn app.main:app` y `POSTGRES_PORT=5999` (sin apagar `libreria-db`): `GET /health/live` → `200 {"estado":"vivo"}` y `GET /health/ready` → `503 {"detail":"La base de datos no está disponible"}`.
+- [x] 3.2 Correr `python -m unittest discover -s tests` y `openspec validate b2-lifespan-health --strict`, dejando asentada la evidencia en este `tasks.md`.
+  - **Resultado (2026-11-06):** `Ran 35 tests in 0.558s — OK`. `openspec validate b2-lifespan-health --strict`: `Change 'b2-lifespan-health' is valid`.
 
 ## Workflow follow-up
 
