@@ -455,10 +455,13 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 
 ### [B7] `readme-parcial` · #36
 - **Estado**: `[ ]` pendiente
-- **Scope**: `README.md` con integrantes y los pasos desde cero (entorno virtual, dependencias, `.env` y la clave de firma, migraciones, seed, arranque)
+- **Scope**: `README.md` con integrantes y los pasos desde cero (entorno virtual, dependencias, `.env` y la clave de firma, migraciones, seed, arranque con `uvicorn main:app`)
 - **Dependencias**: E7, J8 · 🔓 Destraba: E10
 - **Governance**: BAJO
-- **Leer antes**: `11_entrega_y_despliegue.md` §Formato de entrega
+- **Leer antes**: `11_entrega_y_despliegue.md` §Formato de entrega · `09_decisiones_y_supuestos.md` DD-08
+
+> **Paso previo a E10 — Mover `app/main.py` a `main.py` en la raíz (DD-08):**
+> Una vez mergeados todos los routers de la fase 2 (y antes de cerrar I1, B7 y E10), mover `app/main.py` → `main.py` en la raíz siguiendo el checklist de `knowledge-base/09_decisiones_y_supuestos.md` (DD-08): arranque con `uvicorn main:app`, todos los `import app.modules...` arriba de `app = FastAPI(...)`, actualizar imports de `app.main` en tests/scripts/README y correr la suite de `unittest` y todos los `.http`.
 
 ### [E10] `zip-de-entrega` · #29
 - **Estado**: `[ ]` pendiente

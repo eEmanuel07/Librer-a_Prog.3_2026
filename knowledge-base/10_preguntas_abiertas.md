@@ -2,11 +2,11 @@
 
 ## Inconsistencias detectadas
 
-### IN-01 — `main.py` y `seed.py` no están en la raíz
+### IN-01 — `main.py` y `seed.py` no están en la raíz *(Resuelta — DD-08)*
 **Consigna (pág. 8):** `main.py` y `seed.py` van en la raíz del proyecto.
 **Repo:** `app/main.py` y `scripts/seed.py`. Además, el Dockerfile del TP arranca `app.main:app` (pág. 14), pero eso es del despliegue, no del parcial.
 **Impacto:** la estructura se corrige por estructura (6 % del puntaje, pág. 23), y los casos piden `python seed.py` (pág. 21).
-**Resolución propuesta:** R8 lleva `seed.py` a la raíz. Para `main.py`, decidir en grupo si se mueve o se deja un `main.py` en la raíz que importe la app. Hoy no tiene issue.
+**Resolución acordada (DD-08):** R8 lleva `seed.py` a la raíz. `main.py` se mantiene en `app/main.py` durante el desarrollo para no generar conflictos en las ramas abiertas y se mueve a `main.py` en la raíz al cierre, antes de entregar (con el checklist de [09_decisiones_y_supuestos.md](09_decisiones_y_supuestos.md)). Queda definir quién ejecuta ese movimiento final y en qué tarea (por ejemplo en I1 o antes de E10).
 
 ### IN-02 — Dos archivos de paginación
 **Consigna (págs. 8, 10):** `app/core/paginacion.py` con el envoltorio `{items, total, page, size, pages}`.
@@ -38,8 +38,8 @@
 
 | Prioridad | Pregunta | Bloquea | Decisor |
 |---|---|---|---|
-| Alta | ¿`main.py` se mueve a la raíz o se agrega un `main.py` en la raíz que importe `app.main`? (IN-01) | Estructura, R3 (dos grupos de rutas) | Grupo |
 | Alta | Fecha límite de entrega: se publica en el campus (pág. 24). Anotarla en el tablero. | Cierre | Grupo |
+| Media | ¿Quién ejecuta el movimiento final de `app/main.py` a `main.py` en la raíz (DD-08) y en qué tarea (por ejemplo I1, la integración, o E10, el armado del zip)? | Cierre (I1 / E10) | Grupo |
 | Media | ¿Quién borra `app/core/pagination.py` cuando todos los módulos usen el envoltorio? (IN-02) | Ej. 3 | Grupo |
 | Media | ¿Puerto y URL del VPS asignados por la cátedra? (pág. 15) | E8, E9 | Cátedra |
 | Baja | ¿Se corrigen los números de RN viejos en un change aparte o al tocar cada archivo? (IN-03) | — | Grupo |
