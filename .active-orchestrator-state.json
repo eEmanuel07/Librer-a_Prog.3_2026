@@ -1,0 +1,9 @@
+{
+  "version": 5,
+  "step": "kb",
+  "owner": "active-orchestrator",
+  "discovery": {
+    "skipped": true,
+    "reason": "La consigna del parcial ya define qué construir; no hay competidores ni usuarios que investigar."
+  }
+}
