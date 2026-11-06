@@ -1,10 +1,32 @@
 from datetime import datetime, timezone
 
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.database import get_session
+from app.core.uow import UnitOfWork
 from app.modules.usuarios.models import IntentoAcceso
-from app.modules.usuarios.repository import IntentoAccesoRepository
+from app.modules.usuarios.repository import (
+    AsignacionRolRepository,
+    IntentoAccesoRepository,
+    UsuarioRepository,
+)
+
+
+class UsuarioUnitOfWork(UnitOfWork):
+    """Unit of Work del módulo usuarios."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session)
+        self.usuarios = UsuarioRepository(session)
+        self.asignaciones_rol = AsignacionRolRepository(session)
+        self.intentos_acceso = IntentoAccesoRepository(session)
+
+
+def get_usuario_uow(session: AsyncSession = Depends(get_session)) -> UsuarioUnitOfWork:
+    """Construye el Unit of Work del módulo sin abrirlo."""
+    return UsuarioUnitOfWork(session)
 
 
 async def registrar_intento_acceso(

@@ -6,12 +6,14 @@ from fastapi.responses import JSONResponse
 from app.core.config import get_settings
 from app.core.database import crear_fabrica_sesiones, crear_motor
 from app.core.paginacion import PaginaInexistente
+from app.core.security import calcular_hash_ficticio
 from app.modules.autores.router import router as autores_router
 from app.modules.clientes.router import router as clientes_router
 from app.modules.editoriales.router import router as editoriales_router
 from app.modules.generos.router import router as generos_router
 from app.modules.health.router import router as health_router
 from app.modules.libros.router import router as libros_router
+from app.modules.usuarios.router import router as auth_router
 from app.modules.ventas.router import router as ventas_router
 
 # SQLAlchemy resuelve las relaciones por nombre ("Cliente", "RenglonVenta"...): todos los
@@ -26,8 +28,10 @@ import app.modules.ventas.models  # noqa: F401
 async def lifespan(app: FastAPI):
     settings = get_settings()
     motor = crear_motor(settings.database_url, echo=settings.sql_echo)
+    app.state.settings = settings
     app.state.engine = motor
     app.state.session_factory = crear_fabrica_sesiones(motor)
+    app.state.hash_ficticio = await calcular_hash_ficticio(settings)
     yield
     await motor.dispose()
 
@@ -43,6 +47,7 @@ async def pagina_inexistente(request: Request, error: PaginaInexistente) -> JSON
 
 
 app.include_router(health_router)
+app.include_router(auth_router)
 app.include_router(editoriales_router)
 app.include_router(generos_router)
 app.include_router(autores_router)
