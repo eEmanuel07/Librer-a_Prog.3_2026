@@ -42,8 +42,9 @@
 
 ## 4. Autores — commit `refactor(autores): Unit of Work del módulo`
 
-- [ ] 4.1 Crear `app/modules/autores/unit_of_work.py` (`AutorUnitOfWork`, `get_autores_uow`).
-- [ ] 4.2 Pasar `service.py` (2 commits) y `router.py` al patrón nuevo. Verificar `test/autores.http` y los tests.
+- [x] 4.1 Crear `app/modules/autores/unit_of_work.py` (`AutorUnitOfWork`, `get_autores_uow`).
+- [x] 4.2 Pasar `service.py` (2 commits) y `router.py` al patrón nuevo. Verificar `test/autores.http` y los tests.
+  - **Resultado (2026-11-05):** las 2 escrituras usan `async with uow:` **sin `con_mensajes()`**. La tabla `autor` no tiene UNIQUE, FK ni CHECK, y antes ya se llamaba a `uow.commit()` sin mensajes, así que se conservan los mensajes por defecto. `Ran 24 tests — OK`. `test/autores.http` sobre una copia nueva de `libreria_b4`: 13 peticiones con **0 diferencias** respecto de [linea-de-base.md](linea-de-base.md) (200×4, 201×1, 404×3, 422×5). Los 404 dan "El autor no existe". Sin errores en el log. `grep` de `uow.commit` / `app.core.uow` en `app/modules/autores/*.py`: vacío.
 
 ## 5. Libros — commit `refactor(libros): Unit of Work del módulo`
 
