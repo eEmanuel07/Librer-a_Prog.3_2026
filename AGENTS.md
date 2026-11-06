@@ -93,7 +93,13 @@ Valen para **cualquier** agente y cualquier integrante. Si tenés instrucciones 
 
 10. **Tests con `unittest`** (`IsolatedAsyncioTestCase`, `fastapi.testclient.TestClient`), nunca pytest, que no está en `requirements.txt`. Se corren con `python -m unittest discover -s tests`.
 
-> **Recordatorio de la consigna** (no son reglas nuevas del grupo; están en [05](knowledge-base/05_reglas_de_negocio.md) y [08](knowledge-base/08_arquitectura_propuesta.md)): el router construye el Unit of Work y el servicio lo abre con `async with`; ningún repositorio hace `commit()`; RN-02, RN-10 y RN-16 van cada una en un solo bloque; las dependencias piden `Depends(get_session)` (la única con sesión propia es `registrar_intento_acceso`); ningún error devuelve texto de la base y ninguna entrada inválida da 500.
+### De la consigna (detalle en [05](knowledge-base/05_reglas_de_negocio.md), [06](knowledge-base/06_funcionalidades.md) y [08](knowledge-base/08_arquitectura_propuesta.md))
+
+11. **El router construye el Unit of Work y el servicio lo abre con `async with`** → el servicio nunca lo construye (Ej. 6, [06](knowledge-base/06_funcionalidades.md) / [08](knowledge-base/08_arquitectura_propuesta.md)).
+12. **Ningún repositorio hace `commit()`** → los repositorios sólo hacen `flush()`; la confirmación es exclusiva del Unit of Work al salir del bloque (Ej. 6, [06](knowledge-base/06_funcionalidades.md)).
+13. **RN-02, RN-10 y RN-16, cada una en un solo bloque `async with`** → registro de cliente (RN-02), venta con descuento de stock (RN-10) y operación sensible con su evento de seguridad (RN-16) se confirman o revierten enteros en una única transacción (Ej. 6, [05](knowledge-base/05_reglas_de_negocio.md)).
+14. **Las dependencias piden `Depends(get_session)`** → comparten la sesión de la petición con el Unit of Work; la única escritura con sesión y transacción propias es `registrar_intento_acceso` (Ej. 6 y 7, [06](knowledge-base/06_funcionalidades.md) / DD-04 en [09](knowledge-base/09_decisiones_y_supuestos.md)).
+15. **Ningún error devuelve texto de la base y ninguna entrada inválida termina en 500** → el cliente recibe un mensaje propio del dominio y el código HTTP que corresponde (RN-15, [05](knowledge-base/05_reglas_de_negocio.md)).
 
 ---
 
