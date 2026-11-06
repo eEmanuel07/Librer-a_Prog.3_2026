@@ -113,7 +113,7 @@ Cada uno tiene `get_<módulo>_uow(session = Depends(get_session))`, que lo **con
 
 - No hace falta código nuevo: alcanza con que **toda** dependencia que necesite la base pida `Depends(get_session)` y nunca abra la fábrica por su cuenta. FastAPI resuelve `get_session` una sola vez por petición y le entrega el mismo objeto al `get_<módulo>_uow` y a `get_usuario_actual`.
 - **R1 (`get_usuario_actual`) es de Bruno: este change no escribe código de esa dependencia ni de la verificación de rol.** Solo deja una nota en el **docstring de `get_session`** (`app/core/database.py`): *"`get_usuario_actual` (y la verificación de rol) tiene que pedir `session: AsyncSession = Depends(get_session)`. Así FastAPI le da la misma sesión que al Unit of Work y la petición usa una sola conexión."*
-- **Cómo se prueba sin R1:** un test arma una app con una ruta que recibe `get_editorial_uow` y una dependencia de prueba que pide `get_session`. Verifica dos cosas: que `uow.session is session`, y que una `session_factory` falsa que cuenta sus llamadas fue llamada **una sola vez** en la petición.
+- **Cómo se prueba sin R1:** un test arma una app con una ruta que recibe `get_editoriales_uow` y una dependencia de prueba que pide `get_session`. Verifica dos cosas: que `uow.session is session`, y que una `session_factory` falsa que cuenta sus llamadas fue llamada **una sola vez** en la petición.
 
 ### 6. El 409 por CHECK se prueba con un test unitario del base
 

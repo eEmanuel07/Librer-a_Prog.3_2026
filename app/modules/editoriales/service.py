@@ -1,50 +1,55 @@
 from app.core.errors import NoEncontrado
-from app.core.uow import UnitOfWork
 from app.modules.editoriales.models import Editorial
 from app.modules.editoriales.schemas import EditorialCreate, EditorialRead, EditorialUpdate, LibroDeEditorial
+from app.modules.editoriales.unit_of_work import EditorialUnitOfWork
 
 _DETALLE_UNIQUE = "Ya existe una editorial con ese nombre"
 _DETALLE_NO_EXISTE = "La editorial no existe"
 
 
-async def _buscar(uow: UnitOfWork, editorial_id: int) -> Editorial:
+async def _buscar(uow: EditorialUnitOfWork, editorial_id: int) -> Editorial:
+    # auxiliar: se llama dentro de un bloque ya abierto, no abre el suyo
     editorial = await uow.editoriales.obtener(editorial_id)
     if editorial is None:
         raise NoEncontrado(_DETALLE_NO_EXISTE)
     return editorial
 
 
-async def crear_editorial(uow: UnitOfWork, datos: EditorialCreate) -> EditorialRead:
+async def crear_editorial(uow: EditorialUnitOfWork, datos: EditorialCreate) -> EditorialRead:
     editorial = Editorial(**datos.model_dump())
-    uow.editoriales.agregar(editorial)
-    await uow.commit(detalle_unique=_DETALLE_UNIQUE)
+    # el nombre repetido lo rechaza el UNIQUE de la base al confirmar (409)
+    async with uow.con_mensajes(unique=_DETALLE_UNIQUE):
+        uow.editoriales.agregar(editorial)
     return EditorialRead.model_validate(editorial, from_attributes=True)
 
 
-async def listar_editoriales(uow: UnitOfWork, limit: int, offset: int) -> list[EditorialRead]:
-    editoriales = await uow.editoriales.listar(limit, offset)
-    return [EditorialRead.model_validate(e, from_attributes=True) for e in editoriales]
+async def listar_editoriales(uow: EditorialUnitOfWork, limit: int, offset: int) -> list[EditorialRead]:
+    async with uow:
+        editoriales = await uow.editoriales.listar(limit, offset)
+        return [EditorialRead.model_validate(e, from_attributes=True) for e in editoriales]
 
 
-async def obtener_editorial(uow: UnitOfWork, editorial_id: int) -> EditorialRead:
-    editorial = await _buscar(uow, editorial_id)
-    return EditorialRead.model_validate(editorial, from_attributes=True)
+async def obtener_editorial(uow: EditorialUnitOfWork, editorial_id: int) -> EditorialRead:
+    async with uow:
+        editorial = await _buscar(uow, editorial_id)
+        return EditorialRead.model_validate(editorial, from_attributes=True)
 
 
 async def actualizar_editorial(
-    uow: UnitOfWork, editorial_id: int, datos: EditorialUpdate
+    uow: EditorialUnitOfWork, editorial_id: int, datos: EditorialUpdate
 ) -> EditorialRead:
-    editorial = await _buscar(uow, editorial_id)
-    for campo, valor in datos.model_dump(exclude_unset=True).items():
-        setattr(editorial, campo, valor)
-    await uow.commit(detalle_unique=_DETALLE_UNIQUE)
+    async with uow.con_mensajes(unique=_DETALLE_UNIQUE):
+        editorial = await _buscar(uow, editorial_id)
+        for campo, valor in datos.model_dump(exclude_unset=True).items():
+            setattr(editorial, campo, valor)
     return EditorialRead.model_validate(editorial, from_attributes=True)
 
 
 async def listar_libros_de_editorial(
-    uow: UnitOfWork, editorial_id: int, limit: int, offset: int
+    uow: EditorialUnitOfWork, editorial_id: int, limit: int, offset: int
 ) -> list[LibroDeEditorial]:
-    # primero se confirma que exista para poder dar 404 en vez de una lista vacia
-    await _buscar(uow, editorial_id)
-    libros = await uow.editoriales.listar_libros(editorial_id, limit, offset)
-    return [LibroDeEditorial.model_validate(libro, from_attributes=True) for libro in libros]
+    async with uow:
+        # primero se confirma que exista para poder dar 404 en vez de una lista vacia
+        await _buscar(uow, editorial_id)
+        libros = await uow.editoriales.listar_libros(editorial_id, limit, offset)
+        return [LibroDeEditorial.model_validate(libro, from_attributes=True) for libro in libros]

@@ -29,35 +29,36 @@
 
 ## 2. Editoriales — commit `refactor(editoriales): Unit of Work del módulo`
 
-- [ ] 2.1 Crear `app/modules/editoriales/unit_of_work.py` con `EditorialUnitOfWork` (repo `editoriales`) y `get_editorial_uow`, que lo construye sin abrirlo.
-- [ ] 2.2 `service.py`: cambiar las 2 llamadas a `uow.commit(...)` por `async with uow.con_mensajes(unique=...)`. Cada función pública abre su bloque y el tipo pasa a `EditorialUnitOfWork`.
-- [ ] 2.3 `router.py`: usar `Depends(get_editorial_uow)`. Verificar que `test/editoriales.http` da los mismos códigos y mensajes que en la línea de base, incluido el 409 por nombre repetido (unicidad), y que pasan los tests.
+- [x] 2.1 Crear `app/modules/editoriales/unit_of_work.py` con `EditorialUnitOfWork` (repo `editoriales`) y `get_editoriales_uow`, que lo construye sin abrirlo.
+- [x] 2.2 `service.py`: cambiar las 2 llamadas a `uow.commit(...)` por `async with uow.con_mensajes(unique=...)`. Cada función pública abre su bloque y el tipo pasa a `EditorialUnitOfWork`.
+- [x] 2.3 `router.py`: usar `Depends(get_editoriales_uow)`. Verificar que `test/editoriales.http` da los mismos códigos y mensajes que en la línea de base, incluido el 409 por nombre repetido (unicidad), y que pasan los tests.
+  - **Resultado (2026-11-05):** `python -m unittest discover -s tests` da `Ran 24 tests — OK`. `test/editoriales.http` sobre una copia nueva de `libreria_b4`: 17 peticiones con **0 diferencias** de código o mensaje respecto de [linea-de-base.md](linea-de-base.md) (200×5, 201×2, 404×3, 409×2, 422×5). Los dos 409 dan "Ya existe una editorial con ese nombre" (alta y PATCH). Sin errores en el log de uvicorn. `grep` de `uow.commit` / `app.core.uow` en `app/modules/editoriales/*.py`: vacío.
 
 ## 3. Géneros — commit `refactor(generos): Unit of Work del módulo`
 
-- [ ] 3.1 Crear `app/modules/generos/unit_of_work.py` (`GeneroUnitOfWork`, `get_genero_uow`).
+- [ ] 3.1 Crear `app/modules/generos/unit_of_work.py` (`GeneroUnitOfWork`, `get_generos_uow`).
 - [ ] 3.2 Pasar `service.py` (1 commit) y `router.py` al patrón nuevo. Verificar `test/generos.http` y los tests.
 
 ## 4. Autores — commit `refactor(autores): Unit of Work del módulo`
 
-- [ ] 4.1 Crear `app/modules/autores/unit_of_work.py` (`AutorUnitOfWork`, `get_autor_uow`).
+- [ ] 4.1 Crear `app/modules/autores/unit_of_work.py` (`AutorUnitOfWork`, `get_autores_uow`).
 - [ ] 4.2 Pasar `service.py` (2 commits) y `router.py` al patrón nuevo. Verificar `test/autores.http` y los tests.
 
 ## 5. Libros — commit `refactor(libros): Unit of Work del módulo`
 
-- [ ] 5.1 Crear `app/modules/libros/unit_of_work.py` (`LibroUnitOfWork`, `get_libro_uow`).
+- [ ] 5.1 Crear `app/modules/libros/unit_of_work.py` (`LibroUnitOfWork`, `get_libros_uow`).
 - [ ] 5.2 `service.py`: reemplazar `_commit(uow)` por `uow.con_mensajes(unique=..., fk=..., check=...)`. En `crear_libro` y `actualizar_libro`, escribir en un bloque y leer (`obtener_libro`) después de cerrarlo. Pasar `router.py` al patrón nuevo.
 - [ ] 5.3 Verificar `test/libros.http` y los tests, incluido el 409 por editorial o autor inexistente (clave foránea) y por ISBN repetido.
 
 ## 6. Clientes — commit `refactor(clientes): Unit of Work del módulo`
 
-- [ ] 6.1 Crear `app/modules/clientes/unit_of_work.py` (`ClienteUnitOfWork`, `get_cliente_uow`).
+- [ ] 6.1 Crear `app/modules/clientes/unit_of_work.py` (`ClienteUnitOfWork`, `get_clientes_uow`).
 - [ ] 6.2 Pasar `service.py` (3 commits; escritura y lectura en bloques separados en `crear_cliente` y `actualizar_cliente`) y `router.py` al patrón nuevo.
 - [ ] 6.3 Verificar `test/clientes.http` y los tests: email repetido en alta y en PATCH, perfil repetido y PATCH confirmado (otro GET devuelve el dato nuevo).
 
 ## 7. Ventas — commit `refactor(ventas): Unit of Work del módulo con el repo de libros`
 
-- [ ] 7.1 Crear `app/modules/ventas/unit_of_work.py` (`VentaUnitOfWork` con `ventas` y `libros`, `get_venta_uow`).
+- [ ] 7.1 Crear `app/modules/ventas/unit_of_work.py` (`VentaUnitOfWork` con `ventas` y `libros`, `get_ventas_uow`).
 - [ ] 7.2 Pasar `service.py` (1 commit; la lectura de precios va dentro del bloque de escritura y `obtener_venta` después de cerrarlo) y `router.py` al patrón nuevo. La tarea en segundo plano sigue recibiendo datos simples.
 - [ ] 7.3 Verificar `test/ventas.http` y los tests. Probar el rollback: una venta con cliente inexistente da 409, y la cantidad de ventas (con `GET /ventas` o un `SELECT count(*)` de solo lectura) es la misma antes y después.
 
@@ -67,7 +68,7 @@
 
 ## 9. Sesión compartida — commit `test(core): una sola sesión por petición entre el Unit of Work y las dependencias`
 
-- [ ] 9.1 RED/GREEN: en `tests/test_unit_of_work.py` (unittest, con `fastapi.testclient.TestClient` como en `tests/test_auth_router.py`), armar una app con una ruta que recibe `get_editorial_uow` y una dependencia de prueba que pide `get_session` (como lo hará `get_usuario_actual`). Usar una `session_factory` falsa que cuenta sus llamadas. Verificar que `uow.session is session` y que la fábrica se llamó **una sola vez** por petición. Este test tiene que pasar sin tocar código de producción. Si no pasa, parar y revisar.
+- [ ] 9.1 RED/GREEN: en `tests/test_unit_of_work.py` (unittest, con `fastapi.testclient.TestClient` como en `tests/test_auth_router.py`), armar una app con una ruta que recibe `get_editoriales_uow` y una dependencia de prueba que pide `get_session` (como lo hará `get_usuario_actual`). Usar una `session_factory` falsa que cuenta sus llamadas. Verificar que `uow.session is session` y que la fábrica se llamó **una sola vez** por petición. Este test tiene que pasar sin tocar código de producción. Si no pasa, parar y revisar.
 - [ ] 9.2 Agregar al docstring de `get_session` (`app/core/database.py`) la nota para R1: `get_usuario_actual` (y la verificación de rol) tiene que pedir `Depends(get_session)`, así FastAPI le da la misma sesión que al UoW y la petición usa una sola conexión. **No** escribir código de `get_usuario_actual` (es de Bruno). Verificar que no cambió nada más en el archivo (`git diff app/core/database.py`: solo el docstring).
 
 ## 10. Borrar el UoW viejo — commit `refactor(core): borrar uow.py y get_uow`
