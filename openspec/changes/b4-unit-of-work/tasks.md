@@ -56,9 +56,12 @@
 
 ## 6. Clientes — commit `refactor(clientes): Unit of Work del módulo`
 
-- [ ] 6.1 Crear `app/modules/clientes/unit_of_work.py` (`ClienteUnitOfWork`, `get_clientes_uow`).
-- [ ] 6.2 Pasar `service.py` (3 commits; escritura y lectura en bloques separados en `crear_cliente` y `actualizar_cliente`) y `router.py` al patrón nuevo.
-- [ ] 6.3 Verificar `test/clientes.http` y los tests: email repetido en alta y en PATCH, perfil repetido y PATCH confirmado (otro GET devuelve el dato nuevo).
+- [x] 6.1 Crear `app/modules/clientes/unit_of_work.py` (`ClienteUnitOfWork`, `get_clientes_uow`).
+- [x] 6.2 Pasar `service.py` (3 commits; escritura y lectura en bloques separados en `crear_cliente` y `actualizar_cliente`) y `router.py` al patrón nuevo.
+  - **Hecho:** `crear_cliente` y `actualizar_cliente` usan `con_mensajes(unique=_DETALLE_UNIQUE_EMAIL)`, y `obtener_cliente` se llama **después** de cerrar el bloque. En `crear_perfil`, la búsqueda del cliente (404) y el alta del perfil van en **un solo** bloque con `con_mensajes(unique=_DETALLE_UNIQUE_PERFIL)`. `repository.py` no se tocó (módulo de Joaquín).
+- [x] 6.3 Verificar `test/clientes.http` y los tests: email repetido en alta y en PATCH, perfil repetido y PATCH confirmado (otro GET devuelve el dato nuevo).
+  - **Resultado (2026-11-05):** `Ran 24 tests — OK`. `test/clientes.http` sobre una copia nueva de `libreria_b4`: 24 peticiones con **0 diferencias** respecto de [linea-de-base.md](linea-de-base.md) (200×7, 201×2, 404×4, 409×4, 422×7). Email repetido en alta, en mayúsculas y en PATCH: "El email ya está en uso". Perfil repetido: "El cliente ya tiene un perfil". Sin errores en el log.
+  - **PATCH confirmado** (prueba aparte sobre otra copia nueva, porque el `.http` no tiene un GET después del PATCH): `PATCH /clientes/2` con un nombre nuevo da 200, y un `GET /clientes/2` en otra petición devuelve el nombre nuevo. Un PATCH con nombre nuevo **y** el email del cliente 1 da 409, y el GET siguiente conserva el nombre anterior: el bloque se revirtió entero.
 
 ## 7. Ventas — commit `refactor(ventas): Unit of Work del módulo con el repo de libros`
 
