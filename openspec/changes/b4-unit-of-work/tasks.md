@@ -91,14 +91,25 @@
 
 ## 10. Borrar el UoW viejo — commit `refactor(core): borrar uow.py y get_uow`
 
-- [ ] 10.1 Verificar que `grep -rn "app.core.uow\|get_uow\|uow.commit" app tests` da vacío. Borrar `app/core/uow.py`.
-- [ ] 10.2 Actualizar los docstrings de ejemplo de `app/core/errors.py` y `app/core/pagination.py` (hoy muestran `uow.commit` y `get_uow`). Verificar que la app arranca y que todos los tests pasan.
+- [x] 10.1 Verificar que `grep -rn "app.core.uow\|get_uow\|uow.commit" app tests` da vacío. Borrar `app/core/uow.py`.
+  - **Resultado (2026-11-05):** antes de borrar, el grep sobre los `.py` del repo (sin `.venv` ni `__pycache__`) encontró `app.core.uow` en **ningún import**. Los únicos `uow.commit` y `get_uow` estaban en los docstrings de la 10.2 y en el propio `uow.py`. `override_get_uow`, en `tests/test_auth_router.py`, es una función local del test de Hernán que reemplaza `get_usuario_uow`; solo coincide el nombre y no se tocó. Después de la 10.2, `grep -rnw -e get_uow -e uow.commit app tests` y `grep -rn "app\.core\.uow"` sobre todo el repo dan **vacío**. Se borró `app/core/uow.py` con `git rm`.
+- [x] 10.2 Actualizar los docstrings de ejemplo de `app/core/errors.py` y `app/core/pagination.py` (hoy muestran `uow.commit` y `get_uow`). Verificar que la app arranca y que todos los tests pasan.
+  - **Resultado:** `errors.py` muestra `async with uow.con_mensajes(unique=...)`, y `pagination.py`, `uow: AlgoUnitOfWork = Depends(get_algo_uow)`. Solo cambiaron los docstrings. `import app.main` funciona y la suite da `Ran 27 tests — OK`.
 
 ## 11. Verificación integral (sin commit)
 
-- [ ] 11.1 Correr los 7 `.http` de `test/` y comparar con la línea de base de 0.2: mismos códigos y mismos mensajes.
-- [ ] 11.2 Confirmar un 409 de cada tipo: unicidad (editorial repetida), clave foránea (libro con editorial inexistente) y CHECK (test unitario de la tarea 1.1, porque los schemas lo frenan antes con 422). Ninguno devuelve texto de la base.
-- [ ] 11.3 Correr `python -m unittest discover -s tests`: los 12 originales más los nuevos, todos OK.
+- [x] 11.1 Correr los 7 `.http` de `test/` y comparar con la línea de base de 0.2: mismos códigos y mismos mensajes.
+  - **Resultado (2026-11-05, sin `app/core/uow.py`):** cada archivo se corrió sobre una copia nueva de `libreria_b4`. Las **109 peticiones**, comparadas una por una con [linea-de-base.md](linea-de-base.md), dan **0 diferencias** de código o mensaje (200×32, 201×9, 404×14, 405×1, 409×16, 422×37) y **ningún 500**. El log de uvicorn no tiene trazas.
+- [x] 11.2 Confirmar un 409 de cada tipo: unicidad (editorial repetida), clave foránea (libro con editorial inexistente) y CHECK (test unitario de la tarea 1.1, porque los schemas lo frenan antes con 422). Ninguno devuelve texto de la base.
+  - **Resultado:**
+    - **unicidad:** `POST /editoriales/` repetido da 409 "Ya existe una editorial con ese nombre";
+    - **clave foránea:** `POST /libros/` con editorial inexistente da 409 "La editorial, el género o algún autor indicado no existe";
+    - **CHECK:** lo prueban `test_03` (en el bloque) y `test_04` (en el commit) de `tests/test_unit_of_work.py`, con `sqlstate` 23514;
+    - `test_05` comprueba que el `Conflicto` no lleva el texto de la base ni su traza.
+
+    Los 16 409 de los `.http` tienen solo mensajes propios.
+- [x] 11.3 Correr `python -m unittest discover -s tests`: los 12 originales más los nuevos, todos OK.
+  - **Resultado:** `Ran 27 tests — OK` (12 de Hernán, 12 del UoW base y 3 de sesión compartida). Grep final sobre todo el repo (sin `.venv` ni `__pycache__`): `get_uow`, `uow.commit` y `app.core.uow` dan **vacío**, y `app/core/uow.py` no existe. `openspec validate b4-unit-of-work --strict`: válido.
 
 ## Workflow follow-up
 
