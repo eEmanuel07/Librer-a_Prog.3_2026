@@ -1,0 +1,63 @@
+"""Dependencias compartidas de autenticación y autorización."""
+
+from fastapi import Depends, HTTPException, Request, status
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+from app.core.config import Settings, get_settings
+from app.core.database import get_session
+from app.core.security import TokenInvalidoError, decodificar_access_token
+from app.modules.usuarios.models import Usuario
+from app.modules.usuarios.repository import UsuarioRepository
+
+
+async def get_usuario_actual(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> Usuario:
+    """Extrae y valida el usuario activo a partir de la cookie access_token.
+
+    Responde 401 si:
+    - No se envía la cookie access_token.
+    - El token es inválido o venció.
+    - El usuario indicado en el token no existe en la base.
+    - El usuario está inactivo (activo=False).
+    """
+    token = request.cookies.get("access_token")
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No autenticado",
+        )
+
+    try:
+        payload = decodificar_access_token(token, settings=settings)
+    except TokenInvalidoError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token inválido o vencido",
+        ) from exc
+
+    try:
+        user_id = int(payload["sub"])
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token inválido",
+        ) from exc
+
+    usuario = await UsuarioRepository(session).get_by_id(user_id)
+    if usuario is None or not usuario.activo:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario inactivo o inexistente",
+        )
+
+    # Adjuntar al request.state los roles informativos del token
+    request.state.roles_token = payload.get("roles", [])
+    return usuario
+
+
+def get_roles_token(request: Request) -> list[str]:
+    """Obtiene los roles que venían en el token JWT del usuario actual."""
+    return getattr(request.state, "roles_token", [])

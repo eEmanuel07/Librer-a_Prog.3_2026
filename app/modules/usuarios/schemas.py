@@ -81,3 +81,33 @@ class RegistroResponse(BaseModel):
     nombre: str
     cliente_id: int
     mensaje: str = "Usuario registrado exitosamente"
+
+
+# --- Contratos de Sesión y Perfil ---
+
+
+class MensajeResponse(BaseModel):
+    """Respuesta estándar para operaciones informativas."""
+
+    mensaje: str
+
+
+class YoResponse(BaseModel):
+    """Información del usuario autenticado y sus roles."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: EmailStr
+    nombre: str
+    debe_cambiar_password: bool
+    roles: list[str]
+    roles_token: list[str]
+
+
+class CambioPasswordRequest(StrictSchema):
+    """Datos para cambio de contraseña propio."""
+
+    password_actual: PasswordBcrypt
+    password_nueva: PasswordBcrypt
+

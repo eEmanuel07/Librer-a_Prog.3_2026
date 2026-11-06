@@ -27,6 +27,7 @@
 | `b4-unit-of-work` | B4 | Belén | [#77](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/77) | Mergeado y archivado | `openspec/specs/transacciones` |
 | `b2-lifespan-health` | B2 | Belén | por abrir | En revisión (archivado en su rama) | `openspec/specs/ciclo-de-vida-y-salud` |
 | `h3-auth-registro` | H3 | Hernán | por abrir | En revisión (archivado en su rama) | `openspec/specs/autenticacion` |
+| `h6-auth-logout-yo-cambio` | H6 | Hernán | por abrir | En revisión (archivado en su rama) | `openspec/specs/autenticacion` |
 
 La fundación de Active Stack (`knowledge-base/`, `CHANGES.md`, `AGENTS.md`, `CLAUDE.md`) quedó mergeada en [#78](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/78). Las demás tareas `[x]` (incluida E6 en [#79](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/79)) no tienen change en `openspec/`.
 
@@ -333,7 +334,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `03_actores_y_roles.md` §RBAC · `06_funcionalidades.md` §Ej. 3 · `10_preguntas_abiertas.md` IN-02
 
 ### [H6] `auth-logout-yo-cambio` · #42
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama)
 - **Scope**: `POST /auth/logout` (borra la cookie), `GET /auth/yo` (roles vigentes y los del token), `POST /auth/cambiar-password` (72 bytes; evento RN-16; no emite un token nuevo)
 - **Dependencias**: H4, R4 · 🔓 Destraba: H7
 - **Governance**: CRITICO

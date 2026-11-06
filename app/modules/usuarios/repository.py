@@ -5,7 +5,12 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.repository import BaseRepository
-from app.modules.usuarios.models import AsignacionRol, IntentoAcceso, Usuario
+from app.modules.usuarios.models import (
+    AsignacionRol,
+    EventoSeguridad,
+    IntentoAcceso,
+    Usuario,
+)
 
 
 class UsuarioRepository(BaseRepository[Usuario]):
@@ -83,3 +88,10 @@ class IntentoAccesoRepository(BaseRepository[IntentoAcceso]):
         cantidad, primer_fallo = (await self.session.exec(consulta)).one()
         total = int(cantidad or 0)
         return total, (primer_fallo if total > 0 else None)
+
+
+class EventoSeguridadRepository(BaseRepository[EventoSeguridad]):
+    """Operaciones de persistencia para la bitácora de auditoría (RN-16)."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, EventoSeguridad)

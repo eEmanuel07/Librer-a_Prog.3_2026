@@ -9,13 +9,16 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.config import Settings
 from app.core.security import crear_access_token, hashear_password, verificar_password
 from app.modules.clientes.models import Cliente
-from app.modules.usuarios.models import AsignacionRol, Usuario
+from app.modules.usuarios.models import AsignacionRol, EventoSeguridad, Usuario
 from app.modules.usuarios.schemas import (
     CredencialesInvalidasError,
     LimiteIntentosError,
     LoginRequest,
     RegistroRequest,
     RegistroResponse,
+    CambioPasswordRequest,
+    MensajeResponse,
+    YoResponse,
 )
 from app.modules.usuarios.unit_of_work import UsuarioUnitOfWork, registrar_intento_acceso
 
@@ -135,3 +138,66 @@ async def registrar(
         cliente_id=cliente.id,
         mensaje="Usuario registrado exitosamente",
     )
+
+
+async def obtener_yo(
+    usuario: Usuario,
+    roles_token: list[str],
+    uow: UsuarioUnitOfWork,
+) -> YoResponse:
+    """Retorna la información del usuario autenticado, roles vigentes en BD y roles del token."""
+    async with uow:
+        roles_bd = await uow.asignaciones_rol.listar_roles_vigentes(usuario.id)
+
+    return YoResponse(
+        id=usuario.id,
+        email=usuario.email,
+        nombre=usuario.nombre,
+        debe_cambiar_password=usuario.debe_cambiar_password,
+        roles=roles_bd,
+        roles_token=roles_token,
+    )
+
+
+async def cambiar_password(
+    datos: CambioPasswordRequest,
+    usuario: Usuario,
+    uow: UsuarioUnitOfWork,
+    settings: Settings,
+) -> MensajeResponse:
+    """Actualiza la contraseña del usuario autenticado y registra auditoría (RN-16).
+
+    1. Verifica la contraseña actual con bcrypt (fuera de la transacción).
+    2. Si es incorrecta, lanza CredencialesInvalidasError.
+    3. Calcula el nuevo hash bcrypt antes de abrir la transacción (fuera del pool).
+    4. En un solo bloque del Unit of Work (RN-16):
+       - Actualiza password_hash = nuevo_hash
+       - Fija debe_cambiar_password = False
+       - Anota un EventoSeguridad(actor=usuario.email, accion="Cambio de contraseña")
+    """
+    es_valida = await verificar_password(
+        datos.password_actual,
+        usuario.password_hash,
+        settings=settings,
+    )
+    if not es_valida:
+        raise CredencialesInvalidasError("Contraseña actual incorrecta")
+
+    nuevo_hash = await hashear_password(datos.password_nueva, settings=settings)
+    ahora = datetime.now(timezone.utc)
+
+    async with uow:
+        target = await uow.usuarios.get_by_id(usuario.id)
+        if target is not None:
+            target.password_hash = nuevo_hash
+            target.debe_cambiar_password = False
+            uow.usuarios.session.add(target)
+        await uow.eventos.add(
+            EventoSeguridad(
+                actor=usuario.email,
+                accion="Cambio de contraseña",
+                cuando=ahora,
+            )
+        )
+
+    return MensajeResponse(mensaje="Contraseña actualizada exitosamente")
