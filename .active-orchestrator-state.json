@@ -1,6 +1,6 @@
 {
   "version": 5,
-  "step": "registry",
+  "step": "agents",
   "owner": "active-orchestrator",
   "discovery": {
     "skipped": true,
@@ -107,5 +107,9 @@
     "reason": "find-skill salteado por decisión de Belén: instala skills globales y no es documentación del grupo.",
     "recommended": [],
     "installed": []
+  },
+  "registry": {
+    "created_by": "skill-registry",
+    "file": ".atl/skill-registry.md"
   }
 }
