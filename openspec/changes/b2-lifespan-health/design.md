@@ -119,7 +119,7 @@ Siguiendo la regla 10 de `AGENTS.md`, todas las pruebas usan `unittest` (`Isolat
 
 1. Commit 1: configurar `pool_size` y `max_overflow` en `crear_motor` y en el `lifespan`, con sus tests en `tests/test_lifespan_health.py`.
 2. Commit 2: llevar la lógica de `health` a `router.py`, borrar `app/modules/health/service.py` y sumar los tests de `/health/live` y `/health/ready` (con la base arriba y con la base caída).
-3. Verificación manual contra la app y el contenedor `libreria-db` (`test/health.http` con la base arriba y deteniendo o simulando caída).
+3. Verificación manual contra la app y el contenedor `libreria-db` (`test/health.http` con la base arriba; y para probar con la base caída, sin apagar `libreria-db`, levantar la app apuntando a un puerto donde no hay nada escuchando, por ejemplo `POSTGRES_PORT=5999`, para que la conexión se rechace igual que con la base caída mientras el contenedor sigue prendido).
 
 ## UI Mockups
 

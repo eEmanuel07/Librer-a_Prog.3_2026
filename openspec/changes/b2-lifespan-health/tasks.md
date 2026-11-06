@@ -7,16 +7,18 @@
 
 ## 0. Línea de base (sin commit)
 
-- [ ] 0.1 Correr `python -m unittest discover -s tests` y anotar el resultado (se esperan los 27 tests actuales en OK). Si alguno falla, parar y avisar.
+- [x] 0.1 Correr `python -m unittest discover -s tests` y anotar el resultado (se esperan los 27 tests actuales en OK). Si alguno falla, parar y avisar.
+  - **Resultado (2026-11-06):** `Ran 27 tests in 0.535s — OK` (12 de login/auth, 12 del UoW base y 3 de sesión compartida).
 
 ## 1. Pool configurable en `crear_motor` y en el `lifespan` — commit `feat(core): configurar pool_size y max_overflow en el motor del lifespan`
 
-- [ ] 1.1 RED: crear `tests/test_lifespan_health.py` (`unittest.IsolatedAsyncioTestCase`) con las pruebas del motor, la fábrica y el `lifespan`, y verificar que fallan porque `crear_motor` todavía no acepta `pool_size` ni `max_overflow` ni el `lifespan` se los pasa:
+- [x] 1.1 RED: crear `tests/test_lifespan_health.py` (`unittest.IsolatedAsyncioTestCase`) con las pruebas del motor, la fábrica y el `lifespan`, y verificar que fallan porque `crear_motor` todavía no acepta `pool_size` ni `max_overflow` ni el `lifespan` se los pasa:
   - `crear_motor` recibe `pool_size` y `max_overflow` (con valores por defecto `5` y `10`) y los pasa a `create_async_engine` (verificando también el tamaño del pool en el motor creado);
   - `crear_fabrica_sesiones` configura `expire_on_commit=False`;
   - el `lifespan` de `app/main.py` guarda `settings`, `engine`, `session_factory` y `hash_ficticio` en `app.state`, llama a `crear_motor` con `pool_size=settings.db_pool_size` y `max_overflow=settings.db_max_overflow`, y al cerrarse ejecuta `await motor.dispose()`.
-- [ ] 1.2 GREEN: actualizar `crear_motor` en `app/core/database.py` para recibir `pool_size: int = 5` y `max_overflow: int = 10` y pasarlos a `create_async_engine`, y actualizar `lifespan` en `app/main.py` para pasar `pool_size=settings.db_pool_size` y `max_overflow=settings.db_max_overflow`. Correr `python -m unittest discover -s tests` y verificar que pasan todos los tests.
-- [ ] 1.3 REFACTOR: revisar tipos y docstrings de `app/core/database.py` y `app/main.py` sin cambiar comportamiento y volver a correr `python -m unittest discover -s tests`.
+- [x] 1.2 GREEN: actualizar `crear_motor` en `app/core/database.py` para recibir `pool_size: int = 5` y `max_overflow: int = 10` y pasarlos a `create_async_engine`, y actualizar `lifespan` en `app/main.py` para pasar `pool_size=settings.db_pool_size` y `max_overflow=settings.db_max_overflow`. Correr `python -m unittest discover -s tests` y verificar que pasan todos los tests.
+- [x] 1.3 REFACTOR: revisar tipos y docstrings de `app/core/database.py` y `app/main.py` sin cambiar comportamiento y volver a correr `python -m unittest discover -s tests`.
+  - **Resultado (2026-11-06):** **RED:** `test_01` dio `TypeError: crear_motor() got an unexpected keyword argument 'pool_size'`, `test_02` falló porque `create_async_engine` no recibía `pool_size=5, max_overflow=10` y `test_04` falló porque el `lifespan` llamaba a `crear_motor` sin `pool_size` ni `max_overflow`. **GREEN:** `Ran 4 tests in 0.058s — OK` en `tests.test_lifespan_health`. **Suite completa:** `Ran 31 tests in 0.527s — OK` (los 27 previos más los 4 nuevos). No hizo falta refactor adicional: el código quedó limpio y con los tipos explícitos.
 
 ## 2. Módulo `health` sólo con `router.py` y pruebas de `/health/live` y `/health/ready` — commit `refactor(health): mover lógica al router, borrar service.py y probar health`
 
@@ -31,7 +33,7 @@
 
 - [ ] 3.1 Probar con la aplicación real y el contenedor `libreria-db`:
   - con `libreria-db` arriba: `GET /health/live` → `200 {"estado": "vivo"}` y `GET /health/ready` → `200 {"estado": "listo", "base": "ok"}` (`test/health.http`);
-  - con `libreria-db` detenido (o apuntando a un puerto sin base): `GET /health/ready` → `503 {"detail": "La base de datos no está disponible"}` y `GET /health/live` → `200 {"estado": "vivo"}` ("hecho cuando" de la issue #31).
+  - simulando la base caída **sin apagar el contenedor `libreria-db`**, levantando la app apuntando a un puerto donde no hay nada escuchando (por ejemplo `POSTGRES_PORT=5999`): la conexión se rechaza igual que con la base caída, `GET /health/ready` → `503 {"detail": "La base de datos no está disponible"}` y `GET /health/live` → `200 {"estado": "vivo"}` ("hecho cuando" de la issue #31).
 - [ ] 3.2 Correr `python -m unittest discover -s tests` y `openspec validate b2-lifespan-health --strict`, dejando asentada la evidencia en este `tasks.md`.
 
 ## Workflow follow-up

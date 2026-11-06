@@ -27,7 +27,12 @@ import app.modules.ventas.models  # noqa: F401
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
-    motor = crear_motor(settings.database_url, echo=settings.sql_echo)
+    motor = crear_motor(
+        settings.database_url,
+        echo=settings.sql_echo,
+        pool_size=settings.db_pool_size,
+        max_overflow=settings.db_max_overflow,
+    )
     app.state.settings = settings
     app.state.engine = motor
     app.state.session_factory = crear_fabrica_sesiones(motor)
