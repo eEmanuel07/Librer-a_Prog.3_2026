@@ -2,9 +2,9 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 
 from app.core.errors import Conflicto, NoEncontrado
 from app.core.pagination import Paginacion, paginacion
-from app.core.uow import UnitOfWork, get_uow
 from app.modules.ventas import service
 from app.modules.ventas.schemas import VentaCreate, VentaRead, VentaResumen
+from app.modules.ventas.unit_of_work import VentaUnitOfWork, get_ventas_uow
 
 router = APIRouter(prefix="/ventas", tags=["ventas"])
 
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/ventas", tags=["ventas"])
 async def crear_venta(
     datos: VentaCreate,
     tareas: BackgroundTasks,
-    uow: UnitOfWork = Depends(get_uow),
+    uow: VentaUnitOfWork = Depends(get_ventas_uow),
 ) -> VentaRead:
     try:
         venta = await service.crear_venta(uow, datos)
@@ -30,7 +30,7 @@ async def crear_venta(
 @router.get("/", response_model=list[VentaResumen])
 async def listar_ventas(
     pag: Paginacion = Depends(paginacion),  # RN-10: helper común
-    uow: UnitOfWork = Depends(get_uow),
+    uow: VentaUnitOfWork = Depends(get_ventas_uow),
 ) -> list[VentaResumen]:
     return await service.listar_ventas(uow, limit=pag.limit, offset=pag.offset)
 
@@ -38,7 +38,7 @@ async def listar_ventas(
 @router.get("/{venta_id}", response_model=VentaRead)
 async def obtener_venta(
     venta_id: int,
-    uow: UnitOfWork = Depends(get_uow),
+    uow: VentaUnitOfWork = Depends(get_ventas_uow),
 ) -> VentaRead:
     try:
         return await service.obtener_venta(uow, venta_id)

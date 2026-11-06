@@ -3,9 +3,9 @@ import logging
 from decimal import Decimal
 
 from app.core.errors import Conflicto, NoEncontrado
-from app.core.uow import UnitOfWork
 from app.modules.ventas.models import RenglonVenta, Venta
 from app.modules.ventas.schemas import VentaCreate, VentaRead, VentaResumen
+from app.modules.ventas.unit_of_work import VentaUnitOfWork
 
 # Se usa el logger de uvicorn para que el aviso salga en la misma consola que
 # el servidor, sin tocar la configuración global de logging (que duplicaría
@@ -18,59 +18,64 @@ _DETALLE_NO_EXISTE = "La venta no existe"
 # ---------- Lecturas con precarga (sin N+1) ----------
 
 
-async def obtener_venta(uow: UnitOfWork, venta_id: int) -> VentaRead:
-    venta = await uow.ventas.obtener_con_detalle(venta_id)
-    if venta is None:
-        raise NoEncontrado(_DETALLE_NO_EXISTE)
-    return VentaRead.desde_modelo(venta)
+async def obtener_venta(uow: VentaUnitOfWork, venta_id: int) -> VentaRead:
+    async with uow:
+        venta = await uow.ventas.obtener_con_detalle(venta_id)
+        if venta is None:
+            raise NoEncontrado(_DETALLE_NO_EXISTE)
+        return VentaRead.desde_modelo(venta)
 
 
-async def listar_ventas(uow: UnitOfWork, limit: int, offset: int) -> list[VentaResumen]:
-    ventas = await uow.ventas.listar(limit, offset)
-    return [VentaResumen.desde_modelo(v) for v in ventas]
+async def listar_ventas(uow: VentaUnitOfWork, limit: int, offset: int) -> list[VentaResumen]:
+    async with uow:
+        ventas = await uow.ventas.listar(limit, offset)
+        return [VentaResumen.desde_modelo(v) for v in ventas]
 
 
 # ---------- Alta ----------
 
 
-async def crear_venta(uow: UnitOfWork, datos: VentaCreate) -> VentaRead:
+async def crear_venta(uow: VentaUnitOfWork, datos: VentaCreate) -> VentaRead:
     # RN-06: el precio se copia del libro, así que hay que leerlo de la base.
     # Esta consulta es necesaria para obtener el precio; de paso detecta los
     # libros que no existen (C-05).
-    ids_libros = [r.libro_id for r in datos.renglones]
-    precios = await uow.libros.precios(ids_libros)
+    # RN-12: mensaje propio, nunca el texto de la base. Los libros se validan
+    # adentro del bloque, así que una FK rechazada sólo puede ser la del cliente.
+    # La lectura de precios, el 409 por libro inexistente y el alta de la venta
+    # con sus renglones van en un solo bloque: o queda todo o nada.
+    async with uow.con_mensajes(
+        fk="El cliente indicado no existe",
+        unique="Un mismo libro no puede aparecer en dos renglones",
+        check="La venta no cumple las reglas de la librería",
+    ):
+        ids_libros = [r.libro_id for r in datos.renglones]
+        precios = await uow.libros.precios(ids_libros)
 
-    faltantes = [i for i in ids_libros if i not in precios]
-    if faltantes:
-        raise Conflicto(f"No existe el libro con id {', '.join(map(str, faltantes))}")
+        faltantes = [i for i in ids_libros if i not in precios]
+        if faltantes:
+            raise Conflicto(f"No existe el libro con id {', '.join(map(str, faltantes))}")
 
-    # El cliente no se consulta antes: si no existe, la base rechaza la clave
-    # foránea y se traduce a 409 (C-05).
-    venta = Venta(cliente_id=datos.cliente_id, total=Decimal("0.00"))
+        # El cliente no se consulta antes: si no existe, la base rechaza la clave
+        # foránea y se traduce a 409 (C-05).
+        venta = Venta(cliente_id=datos.cliente_id, total=Decimal("0.00"))
 
-    # RN-04: composición. Los renglones se crean con la venta y se agregan a
-    # venta.renglones; se insertan en el mismo commit.
-    for r in datos.renglones:
-        venta.renglones.append(
-            RenglonVenta(
-                libro_id=r.libro_id,
-                cantidad=r.cantidad,
-                precio_unitario=precios[r.libro_id],
+        # RN-04: composición. Los renglones se crean con la venta y se agregan a
+        # venta.renglones; se insertan en el mismo commit.
+        for r in datos.renglones:
+            venta.renglones.append(
+                RenglonVenta(
+                    libro_id=r.libro_id,
+                    cantidad=r.cantidad,
+                    precio_unitario=precios[r.libro_id],
+                )
             )
-        )
 
-    # RN-07: el total lo calcula el servidor.
-    venta.total = sum((r.cantidad * r.precio_unitario for r in venta.renglones), Decimal("0.00"))
+        # RN-07: el total lo calcula el servidor.
+        venta.total = sum((r.cantidad * r.precio_unitario for r in venta.renglones), Decimal("0.00"))
 
-    uow.ventas.agregar(venta)
-    # RN-12: mensaje propio, nunca el texto de la base. Los libros ya se
-    # validaron arriba, así que una FK rechazada acá sólo puede ser la del cliente.
-    await uow.commit(
-        detalle_fk="El cliente indicado no existe",
-        detalle_unique="Un mismo libro no puede aparecer en dos renglones",
-        detalle_check="La venta no cumple las reglas de la librería",
-    )
+        uow.ventas.agregar(venta)
 
+    # la lectura va después de cerrar el bloque de escritura (no se anidan)
     return await obtener_venta(uow, venta.id)
 
 

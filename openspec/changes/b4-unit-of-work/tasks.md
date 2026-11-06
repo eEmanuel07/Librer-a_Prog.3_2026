@@ -65,9 +65,12 @@
 
 ## 7. Ventas — commit `refactor(ventas): Unit of Work del módulo con el repo de libros`
 
-- [ ] 7.1 Crear `app/modules/ventas/unit_of_work.py` (`VentaUnitOfWork` con `ventas` y `libros`, `get_ventas_uow`).
-- [ ] 7.2 Pasar `service.py` (1 commit; la lectura de precios va dentro del bloque de escritura y `obtener_venta` después de cerrarlo) y `router.py` al patrón nuevo. La tarea en segundo plano sigue recibiendo datos simples.
-- [ ] 7.3 Verificar `test/ventas.http` y los tests. Probar el rollback: una venta con cliente inexistente da 409, y la cantidad de ventas (con `GET /ventas` o un `SELECT count(*)` de solo lectura) es la misma antes y después.
+- [x] 7.1 Crear `app/modules/ventas/unit_of_work.py` (`VentaUnitOfWork` con `ventas` y `libros`, `get_ventas_uow`).
+- [x] 7.2 Pasar `service.py` (1 commit; la lectura de precios va dentro del bloque de escritura y `obtener_venta` después de cerrarlo) y `router.py` al patrón nuevo. La tarea en segundo plano sigue recibiendo datos simples.
+  - **Hecho:** en `crear_venta`, la lectura de precios, el `Conflicto` por libro inexistente y el alta de la venta con sus renglones van en **un solo** bloque, con `con_mensajes(fk=..., unique=..., check=...)` y los tres mensajes de antes. `obtener_venta` va después de cerrarlo. En el router, `tareas.add_task(...)` sigue **después** de que `service.crear_venta` volvió sin error: con un 409 no se agenda nada. `repository.py` no se tocó (módulo de Joaquín; J3 va a reescribir `crear_venta`).
+- [x] 7.3 Verificar `test/ventas.http` y los tests. Probar el rollback: una venta con cliente inexistente da 409, y la cantidad de ventas (con `GET /ventas` o un `SELECT count(*)` de solo lectura) es la misma antes y después.
+  - **Resultado (2026-11-05):** `Ran 24 tests — OK`. `test/ventas.http` sobre una copia nueva de `libreria_b4`: 15 peticiones con **0 diferencias** respecto de [linea-de-base.md](linea-de-base.md) (200×2, 201×1, 404×1, 405×1, 409×2, 422×8). El log tiene **un solo** "Comprobante de la venta 2 enviado…" (el de la venta válida) y ninguno por los 409.
+  - **Rollback** (otra copia nueva; conteo con `SELECT count(*)` de solo lectura sobre `venta` y `renglon_venta`): antes, 1 venta / 2 renglones. La venta con cliente inexistente y 2 renglones da 409 "El cliente indicado no existe" y quedan 1 / 2. La venta con un libro inexistente da 409 "No existe el libro con id 9999" y quedan 1 / 2. Control: una venta válida da 201 y quedan 2 / 3. Se agendó 1 solo comprobante.
 
 ## 8. Usuarios — commit `refactor(usuarios): importar el UnitOfWork base de app.core.unit_of_work`
 
