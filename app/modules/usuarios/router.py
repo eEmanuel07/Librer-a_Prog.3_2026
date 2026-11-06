@@ -5,14 +5,20 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import Settings, get_settings
+from app.core.errors import Conflicto
 from app.core.security import calcular_hash_ficticio
 from app.modules.usuarios.schemas import (
     CredencialesInvalidasError,
     LimiteIntentosError,
     LoginRequest,
     LoginResponse,
+    RegistroRequest,
+    RegistroResponse,
 )
-from app.modules.usuarios.service import login as service_login
+from app.modules.usuarios.service import (
+    login as service_login,
+    registrar as service_registrar,
+)
 from app.modules.usuarios.unit_of_work import UsuarioUnitOfWork, get_usuario_uow
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -79,3 +85,19 @@ async def login(
         debe_cambiar_password=usuario.debe_cambiar_password,
         expira_en_segundos=max_age_segundos,
     )
+
+
+@router.post("/registro", response_model=RegistroResponse, status_code=201)
+async def registro(
+    datos: RegistroRequest,
+    uow: UsuarioUnitOfWork = Depends(get_usuario_uow),
+    settings: Settings = Depends(get_settings),
+) -> RegistroResponse:
+    """Registra una cuenta de cliente y usuario en la web (RN-02)."""
+    try:
+        return await service_registrar(datos=datos, uow=uow, settings=settings)
+    except Conflicto as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=exc.mensaje,
+        ) from exc
