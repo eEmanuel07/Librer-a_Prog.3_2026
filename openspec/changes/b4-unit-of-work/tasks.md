@@ -14,7 +14,7 @@
 
 ## 1. UnitOfWork base nuevo — commit `feat(core): UnitOfWork base que confirma o revierte al salir del bloque`
 
-- [ ] 1.1 RED: crear `tests/test_unit_of_work.py` (unittest, `IsolatedAsyncioTestCase`) con una sesión falsa que registra `commit`, `rollback` y `close`. Escribir los casos y verificar que fallan porque `app.core.unit_of_work` no existe:
+- [x] 1.1 RED: crear `tests/test_unit_of_work.py` (unittest, `IsolatedAsyncioTestCase`) con una sesión falsa que registra `commit`, `rollback` y `close`. Escribir los casos y verificar que fallan porque `app.core.unit_of_work` no existe:
   - un bloque sin error confirma una vez y no revierte;
   - un bloque con `NoEncontrado` revierte, no confirma y deja pasar el `NoEncontrado`;
   - un `IntegrityError` dentro del bloque se convierte en `Conflicto` con el mensaje `unique`, `fk` o `check` según el `sqlstate` (23505, 23503, 23514). **El 409 por CHECK se prueba solo acá**: desde la API el schema lo frena antes con 422 (decisión 6 de `design.md`);
@@ -23,8 +23,9 @@
   - se puede abrir dos veces seguidas y confirma las dos;
   - los mensajes de `con_mensajes(...)` se reinician al salir;
   - `con_mensajes(...)` devuelve el mismo objeto.
-- [ ] 1.2 GREEN: crear `app/core/unit_of_work.py` (decisiones 1 y 2 de `design.md`), con docstring que explique el uso. Verificar que pasan los tests nuevos y los 12 de antes.
-- [ ] 1.3 REFACTOR: limpiar nombres o duplicación sin cambiar el comportamiento. Verificar con todos los tests.
+- [x] 1.2 GREEN: crear `app/core/unit_of_work.py` (decisiones 1 y 2 de `design.md`), con docstring que explique el uso. Verificar que pasan los tests nuevos y los 12 de antes.
+- [x] 1.3 REFACTOR: limpiar nombres o duplicación sin cambiar el comportamiento. Verificar con todos los tests.
+  - **Resultado (2026-11-05):** se revisó y quedó sin cambios. La única repetición son las dos líneas `raise conflicto_por_integridad(..., **mensajes) from None` (error en el bloque y error en el commit); extraerlas a un helper agregaba un salto sin ganar claridad. Los mensajes por defecto no se repiten: salen de `conflicto_por_integridad`. **RED:** `ModuleNotFoundError: No module named 'app.core.unit_of_work'`. **GREEN:** `tests.test_unit_of_work` da 12 OK. **Suite completa:** `Ran 24 tests — OK` (los 12 de Hernán más los 12 nuevos). `app/core/uow.py`, los módulos y los routers no se tocaron.
 
 ## 2. Editoriales — commit `refactor(editoriales): Unit of Work del módulo`
 
