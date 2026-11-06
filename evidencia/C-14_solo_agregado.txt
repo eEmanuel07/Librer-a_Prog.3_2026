@@ -1,0 +1,66 @@
+C-14 - UPDATE y DELETE sobre movimiento_stock en psql: los dos, rechazados por el disparador (RN-12)
+Fecha: 2026-11-06 - rama feat/e7-solo-agregado-c14 - PostgreSQL 17.11 - base nueva con alembic upgrade head (migraciones 1 a 4)
+Comando: psql -X -e -v ON_ERROR_STOP=0 -h localhost -U postgres -d libreria -f test/solo_agregado.sql
+Salida completa (sentencias, resultados y errores en el orden en que aparecen):
+
+--- 0. El disparador está instalado en la tabla
+SELECT tgname, tgenabled
+FROM pg_trigger
+WHERE tgrelid = 'movimiento_stock'::regclass AND NOT tgisinternal;
+               tgname               | tgenabled 
+------------------------------------+-----------
+ trg_movimiento_stock_solo_agregado | O
+(1 fila)
+
+BEGIN;
+BEGIN
+--- 1. Datos propios y un movimiento (INSERT: se permite)
+INSERT INTO editorial (nombre, pais) VALUES ('Editorial C-14', 'AR');
+INSERT 0 1
+INSERT INTO usuario (email, nombre, password_hash, activo, debe_cambiar_password)
+VALUES ('c14@prueba.local', 'Prueba C-14', 'no-es-un-hash', true, false);
+INSERT 0 1
+INSERT INTO libro (isbn, titulo, precio, stock, editorial_id)
+SELECT 'C14-0001', 'Libro de la prueba C-14', 100.00, 5, id
+FROM editorial WHERE nombre = 'Editorial C-14';
+INSERT 0 1
+INSERT INTO movimiento_stock (libro_id, usuario_id, cantidad, motivo, cuando)
+SELECT l.id, u.id, 5, 'Stock inicial', now()
+FROM libro l, usuario u
+WHERE l.isbn = 'C14-0001' AND u.email = 'c14@prueba.local';
+INSERT 0 1
+SAVEPOINT antes_del_update;
+SAVEPOINT
+--- 2. UPDATE sobre movimiento_stock
+UPDATE movimiento_stock SET cantidad = 500
+WHERE libro_id = (SELECT id FROM libro WHERE isbn = 'C14-0001');
+psql:test/solo_agregado.sql:47: ERROR:  movimiento_stock es de solo agregado: no admite UPDATE
+SUGERENCIA:  Para corregir un movimiento, registrá otro que lo compense.
+CONTEXTO:  función PL/pgSQL movimiento_stock_solo_agregado() en la línea 3 en RAISE
+ROLLBACK TO SAVEPOINT antes_del_update;
+ROLLBACK
+SAVEPOINT antes_del_delete;
+SAVEPOINT
+--- 3. DELETE sobre movimiento_stock
+DELETE FROM movimiento_stock
+WHERE libro_id = (SELECT id FROM libro WHERE isbn = 'C14-0001');
+psql:test/solo_agregado.sql:55: ERROR:  movimiento_stock es de solo agregado: no admite DELETE
+SUGERENCIA:  Para corregir un movimiento, registrá otro que lo compense.
+CONTEXTO:  función PL/pgSQL movimiento_stock_solo_agregado() en la línea 3 en RAISE
+ROLLBACK TO SAVEPOINT antes_del_delete;
+ROLLBACK
+--- 4. El movimiento quedó como estaba
+SELECT m.cantidad, m.motivo
+FROM movimiento_stock m JOIN libro l ON l.id = m.libro_id
+WHERE l.isbn = 'C14-0001';
+ cantidad |    motivo     
+----------+---------------
+        5 | Stock inicial
+(1 fila)
+
+ROLLBACK;
+ROLLBACK
+
+=== stderr ===
+
+Resultado: el INSERT se acepta; el UPDATE y el DELETE los rechaza el disparador trg_movimiento_stock_solo_agregado (SQLSTATE 23001), y el movimiento sigue con cantidad 5. El script termina en ROLLBACK: después de correrlo, movimiento_stock, libro y usuario quedan como estaban.
