@@ -1,6 +1,6 @@
 {
   "version": 5,
-  "step": "kb",
+  "step": "roadmap",
   "owner": "active-orchestrator",
   "discovery": {
     "skipped": true,
@@ -43,5 +43,11 @@
       "knowledge-base/11_entrega_y_despliegue.md",
       "knowledge-base/README.md"
     ]
+  },
+  "visual_design": {
+    "created_by": "design-system",
+    "mode": "off",
+    "status": "skipped",
+    "path": "design-system/README.md"
   }
 }
