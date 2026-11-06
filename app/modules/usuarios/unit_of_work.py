@@ -10,6 +10,7 @@ from app.modules.clientes.repository import ClienteRepository
 from app.modules.usuarios.models import IntentoAcceso
 from app.modules.usuarios.repository import (
     AsignacionRolRepository,
+    EventoSeguridadRepository,
     IntentoAccesoRepository,
     UsuarioRepository,
 )
@@ -24,6 +25,7 @@ class UsuarioUnitOfWork(UnitOfWork):
         self.asignaciones_rol = AsignacionRolRepository(session)
         self.intentos_acceso = IntentoAccesoRepository(session)
         self.clientes = ClienteRepository(session)
+        self.eventos = EventoSeguridadRepository(session)
 
 
 def get_usuario_uow(session: AsyncSession = Depends(get_session)) -> UsuarioUnitOfWork:

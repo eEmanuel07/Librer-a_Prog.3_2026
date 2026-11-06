@@ -5,18 +5,25 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import Settings, get_settings
+from app.core.dependencies import get_usuario_actual
 from app.core.errors import Conflicto
 from app.core.security import calcular_hash_ficticio
+from app.modules.usuarios.models import Usuario
 from app.modules.usuarios.schemas import (
+    CambioPasswordRequest,
     CredencialesInvalidasError,
     LimiteIntentosError,
     LoginRequest,
     LoginResponse,
+    MensajeResponse,
     RegistroRequest,
     RegistroResponse,
+    YoResponse,
 )
 from app.modules.usuarios.service import (
+    cambiar_password as service_cambiar_password,
     login as service_login,
+    obtener_yo as service_obtener_yo,
     registrar as service_registrar,
 )
 from app.modules.usuarios.unit_of_work import UsuarioUnitOfWork, get_usuario_uow
@@ -99,5 +106,49 @@ async def registro(
     except Conflicto as exc:
         raise HTTPException(
             status_code=409,
+            detail=exc.mensaje,
+        ) from exc
+
+
+@router.post("/logout", response_model=MensajeResponse)
+async def logout(response: Response) -> MensajeResponse:
+    """Cierra la sesión eliminando la cookie HttpOnly access_token."""
+    response.delete_cookie(
+        key="access_token",
+        httponly=True,
+        samesite="lax",
+    )
+    return MensajeResponse(mensaje="Sesión cerrada")
+
+
+@router.get("/yo", response_model=YoResponse)
+async def yo(
+    request: Request,
+    usuario: Usuario = Depends(get_usuario_actual),
+    uow: UsuarioUnitOfWork = Depends(get_usuario_uow),
+) -> YoResponse:
+    """Retorna la identidad del usuario, roles vigentes en BD y roles del token."""
+    roles_token = getattr(request.state, "roles_token", [])
+    return await service_obtener_yo(usuario=usuario, roles_token=roles_token, uow=uow)
+
+
+@router.post("/cambiar-password", response_model=MensajeResponse)
+async def cambiar_password_endpoint(
+    datos: CambioPasswordRequest,
+    usuario: Usuario = Depends(get_usuario_actual),
+    uow: UsuarioUnitOfWork = Depends(get_usuario_uow),
+    settings: Settings = Depends(get_settings),
+) -> MensajeResponse:
+    """Actualiza la contraseña del usuario autenticado y registra auditoría (RN-16)."""
+    try:
+        return await service_cambiar_password(
+            datos=datos,
+            usuario=usuario,
+            uow=uow,
+            settings=settings,
+        )
+    except CredencialesInvalidasError as exc:
+        raise HTTPException(
+            status_code=401,
             detail=exc.mensaje,
         ) from exc
