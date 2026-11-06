@@ -36,8 +36,9 @@
 
 ## 3. Géneros — commit `refactor(generos): Unit of Work del módulo`
 
-- [ ] 3.1 Crear `app/modules/generos/unit_of_work.py` (`GeneroUnitOfWork`, `get_generos_uow`).
-- [ ] 3.2 Pasar `service.py` (1 commit) y `router.py` al patrón nuevo. Verificar `test/generos.http` y los tests.
+- [x] 3.1 Crear `app/modules/generos/unit_of_work.py` (`GeneroUnitOfWork`, `get_generos_uow`).
+- [x] 3.2 Pasar `service.py` (1 commit) y `router.py` al patrón nuevo. Verificar `test/generos.http` y los tests.
+  - **Resultado (2026-11-05):** `Ran 24 tests — OK`. `test/generos.http` sobre una copia nueva de `libreria_b4`: 10 peticiones con **0 diferencias** respecto de [linea-de-base.md](linea-de-base.md) (200×3, 201×1, 404×1, 409×1, 422×4). El 409 da "Ya existe un género con ese nombre" y el 404 da "El género no existe". Sin errores en el log. `grep` de `uow.commit` / `app.core.uow` en `app/modules/generos/*.py`: vacío.
 
 ## 4. Autores — commit `refactor(autores): Unit of Work del módulo`
 
