@@ -156,5 +156,90 @@ class TestUnitOfWorkBase(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(repos, [])
 
 
+class _FabricaQueCuenta:
+    """Reemplaza a ``app.state.session_factory``: cuenta cuántas sesiones se abren."""
+
+    def __init__(self) -> None:
+        self.sesiones: list[_SesionFalsa] = []
+
+    def __call__(self):
+        fabrica = self
+
+        class _Contexto:
+            async def __aenter__(self_ctx):
+                sesion = _SesionFalsa()
+                fabrica.sesiones.append(sesion)
+                return sesion
+
+            async def __aexit__(self_ctx, *args):
+                return None
+
+        return _Contexto()
+
+
+class TestSesionCompartida(unittest.TestCase):
+    """Issue #33: una petición autenticada toma una sola conexión del pool.
+
+    ``get_usuario_actual`` (R1, de Bruno) todavía no existe. Se simula con una
+    dependencia que pide ``get_session``, como va a hacer ella.
+    """
+
+    def _app(self, *, pide_get_session: bool = True):
+        from fastapi import Depends, FastAPI, Request
+        from fastapi.testclient import TestClient
+
+        from app.core.database import get_session
+        from app.modules.editoriales.unit_of_work import EditorialUnitOfWork, get_editoriales_uow
+
+        def usuario_actual_de_prueba(session=Depends(get_session)):
+            return session  # como debe hacerlo get_usuario_actual (R1)
+
+        async def usuario_actual_con_sesion_propia(request: Request):
+            # lo que NO hay que hacer: abrir otra sesión desde la fábrica
+            async with request.app.state.session_factory() as session:
+                yield session
+
+        dependencia_usuario = usuario_actual_de_prueba if pide_get_session else usuario_actual_con_sesion_propia
+
+        app = FastAPI()
+        fabrica = _FabricaQueCuenta()
+        app.state.session_factory = fabrica
+
+        @app.get("/prueba")
+        async def ruta(
+            usuario_session=Depends(dependencia_usuario),
+            uow: EditorialUnitOfWork = Depends(get_editoriales_uow),
+        ):
+            async with uow:
+                pass
+            return {"misma_sesion": uow.session is usuario_session}
+
+        return TestClient(app), fabrica
+
+    def test_01_el_uow_y_la_dependencia_reciben_la_misma_sesion(self):
+        cliente, fabrica = self._app()
+        respuesta = cliente.get("/prueba")
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertTrue(respuesta.json()["misma_sesion"])
+        self.assertEqual(len(fabrica.sesiones), 1)  # una sola sesión en la petición
+        self.assertEqual(fabrica.sesiones[0].commits, 1)  # el UoW la usó
+
+    def test_02_cada_peticion_tiene_su_propia_sesion(self):
+        cliente, fabrica = self._app()
+        cliente.get("/prueba")
+        cliente.get("/prueba")
+        self.assertEqual(len(fabrica.sesiones), 2)
+        self.assertIsNot(fabrica.sesiones[0], fabrica.sesiones[1])
+
+    def test_03_con_una_sesion_propia_serian_dos_sesiones(self):
+        # Control: si la dependencia del usuario abriera su propia sesión en vez
+        # de pedir get_session, la petición tomaría dos (dos conexiones). Muestra
+        # que el test_01 detecta el caso que la issue quiere evitar.
+        cliente, fabrica = self._app(pide_get_session=False)
+        respuesta = cliente.get("/prueba")
+        self.assertFalse(respuesta.json()["misma_sesion"])
+        self.assertEqual(len(fabrica.sesiones), 2)
+
+
 if __name__ == "__main__":
     unittest.main()
