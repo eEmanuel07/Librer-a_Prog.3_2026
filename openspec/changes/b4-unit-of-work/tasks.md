@@ -48,9 +48,11 @@
 
 ## 5. Libros — commit `refactor(libros): Unit of Work del módulo`
 
-- [ ] 5.1 Crear `app/modules/libros/unit_of_work.py` (`LibroUnitOfWork`, `get_libros_uow`).
-- [ ] 5.2 `service.py`: reemplazar `_commit(uow)` por `uow.con_mensajes(unique=..., fk=..., check=...)`. En `crear_libro` y `actualizar_libro`, escribir en un bloque y leer (`obtener_libro`) después de cerrarlo. Pasar `router.py` al patrón nuevo.
-- [ ] 5.3 Verificar `test/libros.http` y los tests, incluido el 409 por editorial o autor inexistente (clave foránea) y por ISBN repetido.
+- [x] 5.1 Crear `app/modules/libros/unit_of_work.py` (`LibroUnitOfWork`, `get_libros_uow`).
+- [x] 5.2 `service.py`: reemplazar `_commit(uow)` por `uow.con_mensajes(unique=..., fk=..., check=...)`. En `crear_libro` y `actualizar_libro`, escribir en un bloque y leer (`obtener_libro`) después de cerrarlo. Pasar `router.py` al patrón nuevo.
+  - **Hecho:** los tres mensajes de `_commit` quedan en `_MENSAJES_409`, y las 2 escrituras abren `async with uow.con_mensajes(**_MENSAJES_409)`. `obtener_libro` se llama **después** de cerrar el bloque de escritura, así que no hay bloques anidados. `repository.py` y `mover_stock` no se tocaron (módulo de Elías).
+- [x] 5.3 Verificar `test/libros.http` y los tests, incluido el 409 por editorial o autor inexistente (clave foránea) y por ISBN repetido.
+  - **Resultado (2026-11-05):** `Ran 24 tests — OK`. `test/libros.http` sobre una copia nueva de `libreria_b4`: 28 peticiones con **0 diferencias** respecto de [linea-de-base.md](linea-de-base.md) (200×9, 201×2, 404×2, 409×7, 422×8). Los 409 por unicidad (ISBN repetido, autor dos veces) dan "El ISBN ya existe o un autor figura dos veces en el libro". Los 409 por FK (editorial, autor o género inexistente, en alta y en PATCH) dan "La editorial, el género o algún autor indicado no existe". Sin errores en el log. `grep` de `uow.commit` / `_commit` / `app.core.uow` en `app/modules/libros/*.py`: vacío.
 
 ## 6. Clientes — commit `refactor(clientes): Unit of Work del módulo`
 
