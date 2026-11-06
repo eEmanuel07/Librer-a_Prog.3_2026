@@ -5,8 +5,18 @@ from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 
-def crear_motor(database_url: str, echo: bool = False) -> AsyncEngine:
-    return create_async_engine(database_url, echo=echo)
+def crear_motor(
+    database_url: str,
+    echo: bool = False,
+    pool_size: int = 5,
+    max_overflow: int = 10,
+) -> AsyncEngine:
+    return create_async_engine(
+        database_url,
+        echo=echo,
+        pool_size=pool_size,
+        max_overflow=max_overflow,
+    )
 
 
 def crear_fabrica_sesiones(motor: AsyncEngine) -> async_sessionmaker[AsyncSession]:
