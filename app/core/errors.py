@@ -1,15 +1,15 @@
 """Errores de dominio y traducción de errores de integridad (RN-12).
 
 Los services lanzan ``NoEncontrado`` y ``Conflicto``; el router de cada
-módulo los pasa a 404 / 409 con el mismo mensaje. El commit del UnitOfWork
-traduce el ``IntegrityError`` con ``conflicto_por_integridad``: ningún error
-devuelve al cliente texto interno de la base (nombres de tablas,
-restricciones o trazas).
+módulo los pasa a 404 / 409 con el mismo mensaje. El UnitOfWork, al salir
+del bloque, traduce el ``IntegrityError`` con ``conflicto_por_integridad``:
+ningún error devuelve al cliente texto interno de la base (nombres de
+tablas, restricciones o trazas).
 
 Uso típico en un service::
 
-    uow.editoriales.agregar(editorial)
-    await uow.commit(detalle_unique="Ya existe una editorial con ese nombre")
+    async with uow.con_mensajes(unique="Ya existe una editorial con ese nombre"):
+        uow.editoriales.agregar(editorial)
 """
 
 from sqlalchemy.exc import IntegrityError

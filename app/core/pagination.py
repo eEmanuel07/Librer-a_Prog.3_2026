@@ -13,7 +13,7 @@ Uso típico en un router::
     @router.get("/")
     async def listar(
         pag: Paginacion = Depends(paginacion),
-        uow: UnitOfWork = Depends(get_uow),
+        uow: AlgoUnitOfWork = Depends(get_algo_uow),
     ) -> list[AlgoRead]:
         return await service.listar(uow, limit=pag.limit, offset=pag.offset)
 """
