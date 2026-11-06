@@ -18,7 +18,7 @@ Decisiones:
 * ERRCODE restrict_violation (SQLSTATE 23001, de la clase 23, violación de
   integridad): asyncpg lo levanta como IntegrityError, así que si la aplicación
   alguna vez lo intentara, el UnitOfWork lo traduce a 409 con mensaje propio y
-  no termina en un 500 (RN-16).
+  no termina en un 500 (RN-15).
 * TRUNCATE no se bloquea a propósito: no es UPDATE ni DELETE, no dispara los
   disparadores por fila, y seed.py lo usa para dejar la base en su estado inicial.
 * El downgrade borra el disparador y después la función, en ese orden, porque
