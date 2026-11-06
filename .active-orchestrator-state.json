@@ -1,6 +1,6 @@
 {
   "version": 5,
-  "step": "agents",
+  "step": "done",
   "owner": "active-orchestrator",
   "discovery": {
     "skipped": true,
@@ -111,5 +111,25 @@
   "registry": {
     "created_by": "skill-registry",
     "file": ".atl/skill-registry.md"
+  },
+  "agents": {
+    "created_by": "agent-instruction",
+    "files": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "claude_md": "importa AGENTS.md con @AGENTS.md (decisión de Belén: un solo lugar para las reglas)",
+    "reglas_applied": [
+      "rama por issue + PR a main + aprobación de otro + merge común",
+      "sin Co-Authored-By / Claude-Session / Generated with Claude Code",
+      "/opsx:propose al empezar y /opsx:archive al cerrar",
+      "no hacer ni adelantar tareas de otros",
+      "nunca .env ni secretos",
+      "despliegue desde el tag entrega-final, nunca con main",
+      "app/main.py único archivo compartido",
+      "una sola cadena de migraciones, leídas, comentadas y probadas",
+      "bloqueos avisados en la issue",
+      "tests con unittest"
+    ]
   }
 }
