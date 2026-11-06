@@ -1,0 +1,150 @@
+Prueba local de la imagen - casos D-01, D-05, D-06 y D-07 ([J2])
+Fecha: 2026-11-05 - rama despliegue en eda6681 (TP de los capítulos 1 a 4, tag entrega-final + Dockerfile y .dockerignore)
+Entorno: Windows con Docker Desktop (cliente 29.8.2), motor desktop-linux
+Responsable: Joaquín Moran
+
+Los casos D se demuestran sobre el VPS en el despliegue; esta es la prueba previa en la
+máquina del grupo, con los comandos y las salidas tal como se obtuvieron.
+
+=== Construcción ===
+PS C:\Users\Usuario\Librer-a_Prog.3_2026> docker build -t libreria .
+[+] Building 35.7s (11/11) FINISHED                                                                docker:desktop-linux
+ => [internal] load build definition from Dockerfile                                                               0.1s
+ => => transferring dockerfile: 2.66kB                                                                             0.0s
+ => [internal] load metadata for docker.io/library/python:3.12-alpine                                              2.4s
+ => [internal] load .dockerignore                                                                                  0.0s
+ => => transferring context: 654B                                                                                  0.0s
+ => [1/6] FROM docker.io/library/python:3.12-alpine@sha256:213242b537a1c166a0c53e903461fc18d5518e7196c93dbecda452  3.6s
+ => => resolve docker.io/library/python:3.12-alpine@sha256:213242b537a1c166a0c53e903461fc18d5518e7196c93dbecda452  0.0s
+ => => sha256:cc36311dc778ba4d60f5286dc5de96f657c8f9ac4a0bd62ce0f9606aae0d4418 248B / 248B                         0.3s
+ => => sha256:113b91713f05dfc8999a7dd895088c7afb068e656eb1c802fab15c92d3e5c4e1 13.78MB / 13.78MB                   1.5s
+ => => sha256:aa121b1b1cdb977b7ae6ba67331cfbf474c3d8060e5d90c833a9abdf86370a60 411.99kB / 411.99kB                 1.4s
+ => => sha256:881fc932939efef04ca120ad44bbd2c0917851eb247aa4995428afb1e80ede17 3.85MB / 3.85MB                     2.5s
+ => => extracting sha256:881fc932939efef04ca120ad44bbd2c0917851eb247aa4995428afb1e80ede17                          0.1s
+ => => extracting sha256:aa121b1b1cdb977b7ae6ba67331cfbf474c3d8060e5d90c833a9abdf86370a60                          0.2s
+ => => extracting sha256:113b91713f05dfc8999a7dd895088c7afb068e656eb1c802fab15c92d3e5c4e1                          0.5s
+ => => extracting sha256:cc36311dc778ba4d60f5286dc5de96f657c8f9ac4a0bd62ce0f9606aae0d4418                          0.0s
+ => [internal] load build context                                                                                  0.2s
+ => => transferring context: 108.12kB                                                                              0.2s
+ => [2/6] WORKDIR /app                                                                                             0.1s
+ => [3/6] COPY requirements.txt .                                                                                  0.0s
+ => [4/6] RUN pip install --no-cache-dir -r requirements.txt                                                      22.3s
+ => [5/6] RUN addgroup -S app && adduser -S -G app app                                                             0.3s
+ => [6/6] COPY . .                                                                                                 0.1s
+ => exporting to image                                                                                             6.7s
+ => => exporting layers                                                                                            3.9s
+ => => exporting manifest sha256:257b6128d616b34802d4f244f635ae4eec5ebf25299507915d817316a4c17d0a                  0.0s
+ => => exporting config sha256:32c88d375fe8d04bcaa290a503d01a241379b25d8aa14ccd9dd88761c8bbfd88                    0.0s
+ => => exporting attestation manifest sha256:ffe0034cadfd5dcf70504fa2e1c646a69b2866e23f3bf68dc51aaccf8101aa02      0.0s
+ => => exporting manifest list sha256:23363f719a866ce934fde22527e04e561b9d0255877008049a9f8dd8713c6a0a             0.0s
+ => => naming to docker.io/library/libreria:latest                                                                 0.0s
+ => => unpacking to docker.io/library/libreria:latest                                                              2.6s
+
+=== D-01 · Imagen base y del proyecto ===
+Esperado: python:3.12-alpine por debajo de los 100 MB, y el Dockerfile parte de ella.
+
+PS C:\Users\Usuario\Librer-a_Prog.3_2026> docker pull python:3.12-alpine
+3.12-alpine: Pulling from library/python
+Digest: sha256:213242b537a1c166a0c53e903461fc18d5518e7196c93dbecda452660a848918
+Status: Downloaded newer image for python:3.12-alpine
+docker.io/library/python:3.12-alpine
+PS C:\Users\Usuario\Librer-a_Prog.3_2026> docker images
+                                                                                                    i Info →   U  In Use
+IMAGE                ID             DISK USAGE   CONTENT SIZE   EXTRA
+libreria:latest      23363f719a86        250MB         57.3MB
+python:3.12-alpine   213242b537a1       74.8MB         18.7MB
+
+Resultado: la base pesa 74.8 MB (< 100 MB). El build resolvió la misma base
+(python:3.12-alpine@sha256:213242b537a1...), que es el FROM del Dockerfile.
+
+=== D-05 · Correr la imagen sin DATABASE_URL ===
+Esperado: el contenedor no queda sirviendo, termina con un error.
+
+PS C:\Users\Usuario\Librer-a_Prog.3_2026> docker run --rm --name prueba-d05 libreria
+Traceback (most recent call last):
+  File "/usr/local/bin/alembic", line 8, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 1039, in main
+    CommandLine(prog=prog).main(argv=argv)
+  File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 1029, in main
+    self.run_cmd(cfg, options)
+  File "/usr/local/lib/python3.12/site-packages/alembic/config.py", line 963, in run_cmd
+    fn(
+  File "/usr/local/lib/python3.12/site-packages/alembic/command.py", line 487, in upgrade
+    script.run_env()
+  File "/usr/local/lib/python3.12/site-packages/alembic/script/base.py", line 550, in run_env
+    util.load_python_file(self.dir, "env.py")
+  File "/usr/local/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 114, in load_python_file
+    module = load_module_py(module_id, path)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 132, in load_module_py
+    spec.loader.exec_module(module)  # type: ignore
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/app/migrations/env.py", line 80, in <module>
+    run_migrations_online()
+  File "/app/migrations/env.py", line 74, in run_migrations_online
+    asyncio.run(run_async_migrations())
+  File "/usr/local/lib/python3.12/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/app/migrations/env.py", line 63, in run_async_migrations
+    get_settings().database_url,
+    ^^^^^^^^^^^^^^
+  File "/app/app/core/config.py", line 18, in get_settings
+    raise RuntimeError(
+RuntimeError: Falta la variable de entorno DATABASE_URL. Copiá env.example como .env y completalo.
+
+PS C:\Users\Usuario\Librer-a_Prog.3_2026> echo "codigo de salida: $LASTEXITCODE"
+codigo de salida: 1
+PS C:\Users\Usuario\Librer-a_Prog.3_2026> docker ps -a --filter name=prueba-d05
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+
+Resultado: alembic upgrade head falla porque el TP no trae ninguna dirección de base por
+defecto; el && del CMD corta antes de uvicorn, el contenedor termina con código 1 y no
+queda ninguno corriendo.
+
+=== D-06 · Contenido de la imagen ===
+Esperado: no hay .env, y env no muestra DATABASE_URL ni ninguna contraseña.
+
+PS C:\Users\Usuario\Librer-a_Prog.3_2026> docker run --rm --entrypoint ls libreria -a /app
+.
+..
+README.md
+alembic.ini
+app
+env.example
+migrations
+requirements.txt
+scripts
+PS C:\Users\Usuario\Librer-a_Prog.3_2026> docker run --rm --entrypoint env libreria
+PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+HOSTNAME=5bb20d23550e
+LANG=C.UTF-8
+GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305
+PYTHON_VERSION=3.12.16
+PYTHON_SHA256=b5796915dc45ff745cfb4e990a7e7c93d6f546328a102ce31448d69ebc37575c
+PYTHONDONTWRITEBYTECODE=1
+PYTHONUNBUFFERED=1
+HOME=/home/app
+
+Resultado: en /app no hay .env (tampoco .git, .venv ni test/, que filtra el .dockerignore).
+env no tiene DATABASE_URL ni contraseñas. GPG_KEY viene de la imagen oficial de Python: es el
+identificador público de la clave con que se firman las versiones de Python, no un secreto.
+
+=== D-07 · Usuario del proceso ===
+Esperado: no es root.
+
+PS C:\Users\Usuario\Librer-a_Prog.3_2026> docker run --rm --entrypoint id libreria
+uid=100(app) gid=101(app) groups=101(app),101(app)
+
+Resultado: la imagen corre con el usuario app (uid 100), no con root (uid 0). En el VPS se
+muestra con docker exec libreria id sobre el contenedor en marcha.
