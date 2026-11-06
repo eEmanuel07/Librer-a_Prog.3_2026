@@ -1,12 +1,17 @@
+from pathlib import Path
 import unittest
 from unittest.mock import AsyncMock, patch
 
 from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from sqlalchemy.exc import OperationalError
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import Settings
-from app.core.database import crear_fabrica_sesiones, crear_motor
+from app.core.database import crear_fabrica_sesiones, crear_motor, get_session
 from app.main import lifespan
+from app.modules.health import router as health_router_module
+from app.modules.health.router import router as health_router
 
 
 def _crear_settings(**overrides) -> Settings:
@@ -27,6 +32,17 @@ def _crear_settings(**overrides) -> Settings:
     }
     valores.update(overrides)
     return Settings(**valores)
+
+
+class _SesionSaludFalsa:
+    def __init__(self, error: Exception | None = None) -> None:
+        self.error = error
+        self.consultas: list[str] = []
+
+    async def execute(self, statement) -> None:
+        self.consultas.append(str(statement))
+        if self.error is not None:
+            raise self.error
 
 
 class TestMotorYLifespan(unittest.IsolatedAsyncioTestCase):
@@ -101,3 +117,95 @@ class TestMotorYLifespan(unittest.IsolatedAsyncioTestCase):
                 mock_dispose.assert_awaited_once()
         finally:
             await motor_real.dispose()
+
+
+class TestHealthRouter(unittest.IsolatedAsyncioTestCase):
+    def _armar_cliente(self, sesion: _SesionSaludFalsa) -> tuple[TestClient, list[int]]:
+        app_prueba = FastAPI()
+        app_prueba.include_router(health_router)
+        aperturas_sesion: list[int] = []
+
+        async def override_get_session():
+            aperturas_sesion.append(1)
+            yield sesion
+
+        app_prueba.dependency_overrides[get_session] = override_get_session
+        return TestClient(app_prueba), aperturas_sesion
+
+    def test_01_modulo_health_solo_tiene_router_py_sin_service_py(self) -> None:
+        carpeta_health = Path(health_router_module.__file__).resolve().parent
+        self.assertFalse(
+            (carpeta_health / "service.py").exists(),
+            "El módulo health sólo debe tener router.py (estructura obligatoria, pág. 8).",
+        )
+        self.assertFalse(
+            hasattr(health_router_module, "service"),
+            "app/modules/health/router.py no debe importar ni delegar en service.py.",
+        )
+
+    def test_02_con_base_arriba_live_y_ready_responden_200(self) -> None:
+        sesion = _SesionSaludFalsa()
+        cliente, aperturas = self._armar_cliente(sesion)
+
+        r_live = cliente.get("/health/live")
+        self.assertEqual(r_live.status_code, 200)
+        self.assertEqual(r_live.json(), {"estado": "vivo"})
+        self.assertEqual(len(aperturas), 0)
+        self.assertEqual(sesion.consultas, [])
+
+        r_ready = cliente.get("/health/ready")
+        self.assertEqual(r_ready.status_code, 200)
+        self.assertEqual(r_ready.json(), {"estado": "listo", "base": "ok"})
+        self.assertEqual(len(aperturas), 1)
+        self.assertEqual(sesion.consultas, ["SELECT 1"])
+
+    def test_03_con_base_caida_sqlalchemy_ready_da_503_sin_texto_interno_y_live_da_200(
+        self,
+    ) -> None:
+        error_interno = OperationalError(
+            "SELECT 1",
+            {},
+            Exception("FATAL: database 'libreria' does not exist on port 5433"),
+        )
+        sesion = _SesionSaludFalsa(error=error_interno)
+        cliente, aperturas = self._armar_cliente(sesion)
+
+        r_ready = cliente.get("/health/ready")
+        self.assertEqual(r_ready.status_code, 503)
+        self.assertEqual(
+            r_ready.json(),
+            {"detail": "La base de datos no está disponible"},
+        )
+        cuerpo = r_ready.text
+        self.assertNotIn("FATAL", cuerpo)
+        self.assertNotIn("5433", cuerpo)
+        self.assertNotIn("SELECT 1", cuerpo)
+        self.assertEqual(len(aperturas), 1)
+
+        r_live = cliente.get("/health/live")
+        self.assertEqual(r_live.status_code, 200)
+        self.assertEqual(r_live.json(), {"estado": "vivo"})
+        self.assertEqual(len(aperturas), 1)
+
+    def test_04_con_base_caida_oserror_ready_da_503_sin_texto_interno_y_live_da_200(
+        self,
+    ) -> None:
+        sesion = _SesionSaludFalsa(
+            error=OSError("Multiple exceptions: [Errno 111] Connect call failed ('127.0.0.1', 5999)")
+        )
+        cliente, aperturas = self._armar_cliente(sesion)
+
+        r_ready = cliente.get("/health/ready")
+        self.assertEqual(r_ready.status_code, 503)
+        self.assertEqual(
+            r_ready.json(),
+            {"detail": "La base de datos no está disponible"},
+        )
+        self.assertNotIn("5999", r_ready.text)
+        self.assertNotIn("Connect call failed", r_ready.text)
+        self.assertEqual(len(aperturas), 1)
+
+        r_live = cliente.get("/health/live")
+        self.assertEqual(r_live.status_code, 200)
+        self.assertEqual(r_live.json(), {"estado": "vivo"})
+        self.assertEqual(len(aperturas), 1)

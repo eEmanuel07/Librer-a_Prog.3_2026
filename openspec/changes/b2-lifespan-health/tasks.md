@@ -22,12 +22,13 @@
 
 ## 2. Módulo `health` sólo con `router.py` y pruebas de `/health/live` y `/health/ready` — commit `refactor(health): mover lógica al router, borrar service.py y probar health`
 
-- [ ] 2.1 RED: agregar en `tests/test_lifespan_health.py` la clase de pruebas de `health` y verificar que el control de estructura falla mientras exista `app/modules/health/service.py`:
+- [x] 2.1 RED: agregar en `tests/test_lifespan_health.py` la clase de pruebas de `health` y verificar que el control de estructura falla mientras exista `app/modules/health/service.py`:
   - con la base disponible (`SELECT 1` responde sin error): `GET /health/live` devuelve `200` `{"estado": "vivo"}` y `GET /health/ready` devuelve `200` `{"estado": "listo", "base": "ok"}`;
   - con la base caída (la sesión lanza `OperationalError` / `SQLAlchemyError` y `OSError` al ejecutar `SELECT 1`, incluyendo texto interno sensible en la excepción): `GET /health/ready` devuelve `503` con `{"detail": "La base de datos no está disponible"}` sin filtrar texto de la base (RN-15), mientras que `GET /health/live` sigue devolviendo `200` `{"estado": "vivo"}` sin abrir sesión;
   - verificar que `app/modules/health/service.py` no existe (estructura obligatoria, pág. 8).
-- [ ] 2.2 GREEN: llevar `{"estado": "vivo"}` y `await session.execute(text("SELECT 1"))` directamente a `app/modules/health/router.py`, actualizar el comentario a `RN-15` (IN-03) y eliminar `app/modules/health/service.py`. Correr `python -m unittest discover -s tests` y verificar que pasan todos los tests.
-- [ ] 2.3 REFACTOR: verificar con `git grep "health"` que no quede ningún import ni referencia a `app.modules.health.service` y volver a correr la suite de `unittest`.
+- [x] 2.2 GREEN: llevar `{"estado": "vivo"}` y `await session.execute(text("SELECT 1"))` directamente a `app/modules/health/router.py`, actualizar el comentario a `RN-15` (IN-03) y eliminar `app/modules/health/service.py`. Correr `python -m unittest discover -s tests` y verificar que pasan todos los tests.
+- [x] 2.3 REFACTOR: verificar con `git grep "health"` que no quede ningún import ni referencia a `app.modules.health.service` y volver a correr la suite de `unittest`.
+  - **Resultado (2026-11-06):** **RED:** `test_01_modulo_health_solo_tiene_router_py_sin_service_py` falló con `AssertionError: True is not false : El módulo health sólo debe tener router.py (estructura obligatoria, pág. 8).` mientras existía `service.py`. **GREEN:** se pasó `{"estado": "vivo"}` y `await session.execute(text("SELECT 1"))` a `app/modules/health/router.py`, se actualizó el comentario a `RN-15` y se borró `app/modules/health/service.py` con `git rm`. `tests.test_lifespan_health` da `Ran 8 tests in 0.175s — OK`. **Suite completa:** `Ran 35 tests in 0.558s — OK`. `git grep` confirma que no queda ninguna referencia a `app.modules.health.service`.
 
 ## 3. Verificación integral (sin commit)
 
