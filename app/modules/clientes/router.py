@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.core.errors import Conflicto, NoEncontrado
 from app.core.pagination import Paginacion, paginacion
-from app.core.uow import UnitOfWork, get_uow
 from app.modules.clientes import service
 from app.modules.clientes.schemas import ClienteCreate, ClienteRead, ClienteUpdate, PerfilCreate, PerfilRead
+from app.modules.clientes.unit_of_work import ClienteUnitOfWork, get_clientes_uow
 from app.modules.ventas.schemas import VentaRead
 
 router = APIRouter(prefix="/clientes", tags=["clientes"])
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/clientes", tags=["clientes"])
 @router.post("/", response_model=ClienteRead, status_code=status.HTTP_201_CREATED)
 async def crear_cliente(
     datos: ClienteCreate,
-    uow: UnitOfWork = Depends(get_uow),
+    uow: ClienteUnitOfWork = Depends(get_clientes_uow),
 ) -> ClienteRead:
     try:
         return await service.crear_cliente(uow, datos)
@@ -24,7 +24,7 @@ async def crear_cliente(
 @router.get("/{cliente_id}", response_model=ClienteRead)
 async def obtener_cliente(
     cliente_id: int,
-    uow: UnitOfWork = Depends(get_uow),
+    uow: ClienteUnitOfWork = Depends(get_clientes_uow),
 ) -> ClienteRead:
     try:
         return await service.obtener_cliente(uow, cliente_id)
@@ -36,7 +36,7 @@ async def obtener_cliente(
 async def actualizar_cliente(
     cliente_id: int,
     datos: ClienteUpdate,
-    uow: UnitOfWork = Depends(get_uow),
+    uow: ClienteUnitOfWork = Depends(get_clientes_uow),
 ) -> ClienteRead:
     try:
         return await service.actualizar_cliente(uow, cliente_id, datos)
@@ -50,7 +50,7 @@ async def actualizar_cliente(
 async def crear_perfil(
     cliente_id: int,
     datos: PerfilCreate,
-    uow: UnitOfWork = Depends(get_uow),
+    uow: ClienteUnitOfWork = Depends(get_clientes_uow),
 ) -> PerfilRead:
     try:
         return await service.crear_perfil(uow, cliente_id, datos)
@@ -64,7 +64,7 @@ async def crear_perfil(
 async def listar_ventas_de_cliente(
     cliente_id: int,
     pag: Paginacion = Depends(paginacion),
-    uow: UnitOfWork = Depends(get_uow),
+    uow: ClienteUnitOfWork = Depends(get_clientes_uow),
 ) -> list[VentaRead]:
     try:
         return await service.listar_ventas_de_cliente(

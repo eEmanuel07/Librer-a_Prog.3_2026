@@ -16,7 +16,17 @@ def crear_fabrica_sesiones(motor: AsyncEngine) -> async_sessionmaker[AsyncSessio
 
 
 async def get_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
-    """Una sesión por petición, tomada de la fábrica guardada en app.state."""
+    """Una sesión por petición, tomada de la fábrica guardada en app.state.
+
+    FastAPI resuelve esta dependencia una sola vez por petición: todo el que
+    pida ``Depends(get_session)`` recibe la misma sesión, y la petición usa
+    una sola conexión del pool.
+
+    Nota para R1: ``get_usuario_actual`` (y la verificación de rol) tiene que
+    pedir ``session: AsyncSession = Depends(get_session)``, nunca abrir la
+    fábrica por su cuenta. Así FastAPI le da la misma sesión que al Unit of
+    Work del módulo y una petición autenticada toma una sola conexión.
+    """
     fabrica: async_sessionmaker[AsyncSession] = request.app.state.session_factory
     async with fabrica() as session:
         yield session

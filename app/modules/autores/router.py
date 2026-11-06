@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.core.errors import Conflicto, NoEncontrado
 from app.core.pagination import Paginacion, paginacion
-from app.core.uow import UnitOfWork, get_uow
 from app.modules.autores import service
 from app.modules.autores.schemas import AutorCreate, AutorRead, AutorUpdate, LibroDeAutor
+from app.modules.autores.unit_of_work import AutorUnitOfWork, get_autores_uow
 
 router = APIRouter(prefix="/autores", tags=["autores"])
 
@@ -12,7 +12,7 @@ router = APIRouter(prefix="/autores", tags=["autores"])
 @router.post("/", response_model=AutorRead, status_code=status.HTTP_201_CREATED)
 async def crear_autor(
     datos: AutorCreate,
-    uow: UnitOfWork = Depends(get_uow),
+    uow: AutorUnitOfWork = Depends(get_autores_uow),
 ) -> AutorRead:
     try:
         return await service.crear_autor(uow, datos)
@@ -23,7 +23,7 @@ async def crear_autor(
 @router.get("/{autor_id}", response_model=AutorRead)
 async def obtener_autor(
     autor_id: int,
-    uow: UnitOfWork = Depends(get_uow),
+    uow: AutorUnitOfWork = Depends(get_autores_uow),
 ) -> AutorRead:
     try:
         return await service.obtener_autor(uow, autor_id)
@@ -35,7 +35,7 @@ async def obtener_autor(
 async def actualizar_autor(
     autor_id: int,
     datos: AutorUpdate,
-    uow: UnitOfWork = Depends(get_uow),
+    uow: AutorUnitOfWork = Depends(get_autores_uow),
 ) -> AutorRead:
     try:
         return await service.actualizar_autor(uow, autor_id, datos)
@@ -49,7 +49,7 @@ async def actualizar_autor(
 async def listar_libros_de_autor(
     autor_id: int,
     pag: Paginacion = Depends(paginacion),
-    uow: UnitOfWork = Depends(get_uow),
+    uow: AutorUnitOfWork = Depends(get_autores_uow),
 ) -> list[LibroDeAutor]:
     try:
         return await service.listar_libros_de_autor(uow, autor_id, limit=pag.limit, offset=pag.offset)

@@ -1,0 +1,116 @@
+# Tasks: b4-unit-of-work
+
+> Rama: `feat/b4-unit-of-work`. Cada grupo es **un commit**. Al cerrar cada uno, la app arranca, `python -m unittest discover -s tests` pasa y el `.http` del módulo da lo mismo que antes.
+> Commits sin `Co-Authored-By` ni líneas de Claude. Cada commit se hace solo cuando Belén lo aprueba.
+> Tests nuevos con **unittest** (`unittest.IsolatedAsyncioTestCase`, igual que los de Hernán), no con pytest: pytest no está en `requirements.txt`.
+> TDD: el comportamiento nuevo (el base y la sesión compartida) se escribe con el test primero. Los módulos son un refactor sin cambio de comportamiento: su red de seguridad son los 12 tests y los `.http`, que se corren antes y después.
+
+## 0. Línea de base (sin commit)
+
+- [x] 0.1 Correr `python -m unittest discover -s tests` y anotar el resultado (se esperan 12 tests OK). Si alguno falla, parar y avisar: sería una falla previa.
+  - **Resultado (2026-11-05, `feat/b4-unit-of-work` en `d01f83f`):** `Ran 12 tests in 0.611s — OK`. Solo apareció un aviso de `StarletteDeprecationWarning` (httpx), que no es una falla.
+- [x] 0.2 Levantar la app y correr los 7 `.http` de `test/`. Anotar el código de cada petición que hoy da 409, 404 o 422 (es la referencia de "sin cambios").
+  - **Resultado (2026-11-05):** en [linea-de-base.md](linea-de-base.md) están las 109 peticiones con su código y mensaje. Se corrieron sobre la copia `libreria_b4` (`createdb -T libreria`), recreada antes de cada archivo, con la app en `POSTGRES_DB=libreria_b4`. Las 109 dieron el código esperado: 200×32, 201×9, 404×14, 405×1, 409×16, 422×37. **Ninguna dio 500**, y el log de uvicorn no tiene errores.
+
+## 1. UnitOfWork base nuevo — commit `feat(core): UnitOfWork base que confirma o revierte al salir del bloque`
+
+- [x] 1.1 RED: crear `tests/test_unit_of_work.py` (unittest, `IsolatedAsyncioTestCase`) con una sesión falsa que registra `commit`, `rollback` y `close`. Escribir los casos y verificar que fallan porque `app.core.unit_of_work` no existe:
+  - un bloque sin error confirma una vez y no revierte;
+  - un bloque con `NoEncontrado` revierte, no confirma y deja pasar el `NoEncontrado`;
+  - un `IntegrityError` dentro del bloque se convierte en `Conflicto` con el mensaje `unique`, `fk` o `check` según el `sqlstate` (23505, 23503, 23514). **El 409 por CHECK se prueba solo acá**: desde la API el schema lo frena antes con 422 (decisión 6 de `design.md`);
+  - un `IntegrityError` en el `commit` revierte y se convierte en `Conflicto` con el mensaje pedido;
+  - nunca se llama a `close()`;
+  - se puede abrir dos veces seguidas y confirma las dos;
+  - los mensajes de `con_mensajes(...)` se reinician al salir;
+  - `con_mensajes(...)` devuelve el mismo objeto.
+- [x] 1.2 GREEN: crear `app/core/unit_of_work.py` (decisiones 1 y 2 de `design.md`), con docstring que explique el uso. Verificar que pasan los tests nuevos y los 12 de antes.
+- [x] 1.3 REFACTOR: limpiar nombres o duplicación sin cambiar el comportamiento. Verificar con todos los tests.
+  - **Resultado (2026-11-05):** se revisó y quedó sin cambios. La única repetición son las dos líneas `raise conflicto_por_integridad(..., **mensajes) from None` (error en el bloque y error en el commit); extraerlas a un helper agregaba un salto sin ganar claridad. Los mensajes por defecto no se repiten: salen de `conflicto_por_integridad`. **RED:** `ModuleNotFoundError: No module named 'app.core.unit_of_work'`. **GREEN:** `tests.test_unit_of_work` da 12 OK. **Suite completa:** `Ran 24 tests — OK` (los 12 de Hernán más los 12 nuevos). `app/core/uow.py`, los módulos y los routers no se tocaron.
+
+## 2. Editoriales — commit `refactor(editoriales): Unit of Work del módulo`
+
+- [x] 2.1 Crear `app/modules/editoriales/unit_of_work.py` con `EditorialUnitOfWork` (repo `editoriales`) y `get_editoriales_uow`, que lo construye sin abrirlo.
+- [x] 2.2 `service.py`: cambiar las 2 llamadas a `uow.commit(...)` por `async with uow.con_mensajes(unique=...)`. Cada función pública abre su bloque y el tipo pasa a `EditorialUnitOfWork`.
+- [x] 2.3 `router.py`: usar `Depends(get_editoriales_uow)`. Verificar que `test/editoriales.http` da los mismos códigos y mensajes que en la línea de base, incluido el 409 por nombre repetido (unicidad), y que pasan los tests.
+  - **Resultado (2026-11-05):** `python -m unittest discover -s tests` da `Ran 24 tests — OK`. `test/editoriales.http` sobre una copia nueva de `libreria_b4`: 17 peticiones con **0 diferencias** de código o mensaje respecto de [linea-de-base.md](linea-de-base.md) (200×5, 201×2, 404×3, 409×2, 422×5). Los dos 409 dan "Ya existe una editorial con ese nombre" (alta y PATCH). Sin errores en el log de uvicorn. `grep` de `uow.commit` / `app.core.uow` en `app/modules/editoriales/*.py`: vacío.
+
+## 3. Géneros — commit `refactor(generos): Unit of Work del módulo`
+
+- [x] 3.1 Crear `app/modules/generos/unit_of_work.py` (`GeneroUnitOfWork`, `get_generos_uow`).
+- [x] 3.2 Pasar `service.py` (1 commit) y `router.py` al patrón nuevo. Verificar `test/generos.http` y los tests.
+  - **Resultado (2026-11-05):** `Ran 24 tests — OK`. `test/generos.http` sobre una copia nueva de `libreria_b4`: 10 peticiones con **0 diferencias** respecto de [linea-de-base.md](linea-de-base.md) (200×3, 201×1, 404×1, 409×1, 422×4). El 409 da "Ya existe un género con ese nombre" y el 404 da "El género no existe". Sin errores en el log. `grep` de `uow.commit` / `app.core.uow` en `app/modules/generos/*.py`: vacío.
+
+## 4. Autores — commit `refactor(autores): Unit of Work del módulo`
+
+- [x] 4.1 Crear `app/modules/autores/unit_of_work.py` (`AutorUnitOfWork`, `get_autores_uow`).
+- [x] 4.2 Pasar `service.py` (2 commits) y `router.py` al patrón nuevo. Verificar `test/autores.http` y los tests.
+  - **Resultado (2026-11-05):** las 2 escrituras usan `async with uow:` **sin `con_mensajes()`**. La tabla `autor` no tiene UNIQUE, FK ni CHECK, y antes ya se llamaba a `uow.commit()` sin mensajes, así que se conservan los mensajes por defecto. `Ran 24 tests — OK`. `test/autores.http` sobre una copia nueva de `libreria_b4`: 13 peticiones con **0 diferencias** respecto de [linea-de-base.md](linea-de-base.md) (200×4, 201×1, 404×3, 422×5). Los 404 dan "El autor no existe". Sin errores en el log. `grep` de `uow.commit` / `app.core.uow` en `app/modules/autores/*.py`: vacío.
+
+## 5. Libros — commit `refactor(libros): Unit of Work del módulo`
+
+- [x] 5.1 Crear `app/modules/libros/unit_of_work.py` (`LibroUnitOfWork`, `get_libros_uow`).
+- [x] 5.2 `service.py`: reemplazar `_commit(uow)` por `uow.con_mensajes(unique=..., fk=..., check=...)`. En `crear_libro` y `actualizar_libro`, escribir en un bloque y leer (`obtener_libro`) después de cerrarlo. Pasar `router.py` al patrón nuevo.
+  - **Hecho:** los tres mensajes de `_commit` quedan en `_MENSAJES_409`, y las 2 escrituras abren `async with uow.con_mensajes(**_MENSAJES_409)`. `obtener_libro` se llama **después** de cerrar el bloque de escritura, así que no hay bloques anidados. `repository.py` y `mover_stock` no se tocaron (módulo de Elías).
+- [x] 5.3 Verificar `test/libros.http` y los tests, incluido el 409 por editorial o autor inexistente (clave foránea) y por ISBN repetido.
+  - **Resultado (2026-11-05):** `Ran 24 tests — OK`. `test/libros.http` sobre una copia nueva de `libreria_b4`: 28 peticiones con **0 diferencias** respecto de [linea-de-base.md](linea-de-base.md) (200×9, 201×2, 404×2, 409×7, 422×8). Los 409 por unicidad (ISBN repetido, autor dos veces) dan "El ISBN ya existe o un autor figura dos veces en el libro". Los 409 por FK (editorial, autor o género inexistente, en alta y en PATCH) dan "La editorial, el género o algún autor indicado no existe". Sin errores en el log. `grep` de `uow.commit` / `_commit` / `app.core.uow` en `app/modules/libros/*.py`: vacío.
+
+## 6. Clientes — commit `refactor(clientes): Unit of Work del módulo`
+
+- [x] 6.1 Crear `app/modules/clientes/unit_of_work.py` (`ClienteUnitOfWork`, `get_clientes_uow`).
+- [x] 6.2 Pasar `service.py` (3 commits; escritura y lectura en bloques separados en `crear_cliente` y `actualizar_cliente`) y `router.py` al patrón nuevo.
+  - **Hecho:** `crear_cliente` y `actualizar_cliente` usan `con_mensajes(unique=_DETALLE_UNIQUE_EMAIL)`, y `obtener_cliente` se llama **después** de cerrar el bloque. En `crear_perfil`, la búsqueda del cliente (404) y el alta del perfil van en **un solo** bloque con `con_mensajes(unique=_DETALLE_UNIQUE_PERFIL)`. `repository.py` no se tocó (módulo de Joaquín).
+- [x] 6.3 Verificar `test/clientes.http` y los tests: email repetido en alta y en PATCH, perfil repetido y PATCH confirmado (otro GET devuelve el dato nuevo).
+  - **Resultado (2026-11-05):** `Ran 24 tests — OK`. `test/clientes.http` sobre una copia nueva de `libreria_b4`: 24 peticiones con **0 diferencias** respecto de [linea-de-base.md](linea-de-base.md) (200×7, 201×2, 404×4, 409×4, 422×7). Email repetido en alta, en mayúsculas y en PATCH: "El email ya está en uso". Perfil repetido: "El cliente ya tiene un perfil". Sin errores en el log.
+  - **PATCH confirmado** (prueba aparte sobre otra copia nueva, porque el `.http` no tiene un GET después del PATCH): `PATCH /clientes/2` con un nombre nuevo da 200, y un `GET /clientes/2` en otra petición devuelve el nombre nuevo. Un PATCH con nombre nuevo **y** el email del cliente 1 da 409, y el GET siguiente conserva el nombre anterior: el bloque se revirtió entero.
+
+## 7. Ventas — commit `refactor(ventas): Unit of Work del módulo con el repo de libros`
+
+- [x] 7.1 Crear `app/modules/ventas/unit_of_work.py` (`VentaUnitOfWork` con `ventas` y `libros`, `get_ventas_uow`).
+- [x] 7.2 Pasar `service.py` (1 commit; la lectura de precios va dentro del bloque de escritura y `obtener_venta` después de cerrarlo) y `router.py` al patrón nuevo. La tarea en segundo plano sigue recibiendo datos simples.
+  - **Hecho:** en `crear_venta`, la lectura de precios, el `Conflicto` por libro inexistente y el alta de la venta con sus renglones van en **un solo** bloque, con `con_mensajes(fk=..., unique=..., check=...)` y los tres mensajes de antes. `obtener_venta` va después de cerrarlo. En el router, `tareas.add_task(...)` sigue **después** de que `service.crear_venta` volvió sin error: con un 409 no se agenda nada. `repository.py` no se tocó (módulo de Joaquín; J3 va a reescribir `crear_venta`).
+- [x] 7.3 Verificar `test/ventas.http` y los tests. Probar el rollback: una venta con cliente inexistente da 409, y la cantidad de ventas (con `GET /ventas` o un `SELECT count(*)` de solo lectura) es la misma antes y después.
+  - **Resultado (2026-11-05):** `Ran 24 tests — OK`. `test/ventas.http` sobre una copia nueva de `libreria_b4`: 15 peticiones con **0 diferencias** respecto de [linea-de-base.md](linea-de-base.md) (200×2, 201×1, 404×1, 405×1, 409×2, 422×8). El log tiene **un solo** "Comprobante de la venta 2 enviado…" (el de la venta válida) y ninguno por los 409.
+  - **Rollback** (otra copia nueva; conteo con `SELECT count(*)` de solo lectura sobre `venta` y `renglon_venta`): antes, 1 venta / 2 renglones. La venta con cliente inexistente y 2 renglones da 409 "El cliente indicado no existe" y quedan 1 / 2. La venta con un libro inexistente da 409 "No existe el libro con id 9999" y quedan 1 / 2. Control: una venta válida da 201 y quedan 2 / 3. Se agendó 1 solo comprobante.
+
+## 8. Usuarios — commit `refactor(usuarios): importar el UnitOfWork base de app.core.unit_of_work`
+
+- [x] 8.1 En `app/modules/usuarios/unit_of_work.py`, cambiar solo el import a `from app.core.unit_of_work import UnitOfWork`. No tocar `registrar_intento_acceso` ni el service de login. Verificar que pasan los 12 tests y que `POST /auth/login` responde igual que antes (200 / 401 / 429).
+  - **Resultado (2026-11-05):** `git diff` de usuarios: una sola línea, el import. `UsuarioUnitOfWork` deja de heredar los 6 repositorios del UoW viejo; el módulo solo usa `usuarios`, `asignaciones_rol` e `intentos_acceso`, así que no cambia nada. Los 12 tests de Hernán dan OK; los de `test_auth_router.py` cubren 200 con cookie, 401 y 429. **Contra la app real** (copia nueva de `libreria_b4`, que no tiene usuarios): 5 logins fallidos dan 401 "Credenciales inválidas", el 6.º da 429 con `Retry-After: 49`, y `intento_acceso` tiene las 5 filas de fallo aunque la petición del 401 se revierte (la sesión propia del Ej. 7 sigue funcionando). El 200 real no se pudo probar porque la base no tiene usuarios; lo cubre `test_01_c03`.
+
+## 9. Sesión compartida — commit `test(core): una sola sesión por petición entre el Unit of Work y las dependencias`
+
+- [x] 9.1 RED/GREEN: en `tests/test_unit_of_work.py` (unittest, con `fastapi.testclient.TestClient` como en `tests/test_auth_router.py`), armar una app con una ruta que recibe `get_editoriales_uow` y una dependencia de prueba que pide `get_session` (como lo hará `get_usuario_actual`). Usar una `session_factory` falsa que cuenta sus llamadas. Verificar que `uow.session is session` y que la fábrica se llamó **una sola vez** por petición. Este test tiene que pasar sin tocar código de producción. Si no pasa, parar y revisar.
+  - **Resultado (2026-11-05):** clase `TestSesionCompartida` en `tests/test_unit_of_work.py`, con una `session_factory` falsa que cuenta las sesiones que abre y una dependencia de prueba que pide `get_session`, como lo hará `get_usuario_actual`:
+    - `test_01`: `uow.session is session` y **1 sola sesión** en la petición, que el UoW confirmó;
+    - `test_02`: 2 peticiones abren 2 sesiones distintas;
+    - `test_03` (control): si la dependencia abre **su propia** sesión desde la fábrica, son 2 sesiones y no la misma. Muestra que el `test_01` detecta el caso que la issue quiere evitar.
+
+    Pasan los 3 **sin tocar código de producción**. No hubo rojo previo porque el comportamiento ya lo da la caché de dependencias de FastAPI; el control del `test_03` cumple ese papel. Un primer control con `Depends(get_session, use_cache=False)` falló porque estaba mal planteado: FastAPI igual guarda el resultado y el UoW lo reutiliza. Se reemplazó por el caso real.
+- [x] 9.2 Agregar al docstring de `get_session` (`app/core/database.py`) la nota para R1: `get_usuario_actual` (y la verificación de rol) tiene que pedir `Depends(get_session)`, así FastAPI le da la misma sesión que al UoW y la petición usa una sola conexión. **No** escribir código de `get_usuario_actual` (es de Bruno). Verificar que no cambió nada más en el archivo (`git diff app/core/database.py`: solo el docstring).
+  - **Resultado (2026-11-05):** `git diff --numstat app/core/database.py` da `11 1`. Solo se reemplazó la línea del docstring de `get_session`, y el código de la función no cambió. No hay código de `get_usuario_actual` en `app/`. La suite completa da `Ran 27 tests — OK` (12 de Hernán, 12 del UoW base y 3 de sesión compartida).
+
+## 10. Borrar el UoW viejo — commit `refactor(core): borrar uow.py y get_uow`
+
+- [x] 10.1 Verificar que `grep -rn "app.core.uow\|get_uow\|uow.commit" app tests` da vacío. Borrar `app/core/uow.py`.
+  - **Resultado (2026-11-05):** antes de borrar, el grep sobre los `.py` del repo (sin `.venv` ni `__pycache__`) encontró `app.core.uow` en **ningún import**. Los únicos `uow.commit` y `get_uow` estaban en los docstrings de la 10.2 y en el propio `uow.py`. `override_get_uow`, en `tests/test_auth_router.py`, es una función local del test de Hernán que reemplaza `get_usuario_uow`; solo coincide el nombre y no se tocó. Después de la 10.2, `grep -rnw -e get_uow -e uow.commit app tests` y `grep -rn "app\.core\.uow"` sobre todo el repo dan **vacío**. Se borró `app/core/uow.py` con `git rm`.
+- [x] 10.2 Actualizar los docstrings de ejemplo de `app/core/errors.py` y `app/core/pagination.py` (hoy muestran `uow.commit` y `get_uow`). Verificar que la app arranca y que todos los tests pasan.
+  - **Resultado:** `errors.py` muestra `async with uow.con_mensajes(unique=...)`, y `pagination.py`, `uow: AlgoUnitOfWork = Depends(get_algo_uow)`. Solo cambiaron los docstrings. `import app.main` funciona y la suite da `Ran 27 tests — OK`.
+
+## 11. Verificación integral (sin commit)
+
+- [x] 11.1 Correr los 7 `.http` de `test/` y comparar con la línea de base de 0.2: mismos códigos y mismos mensajes.
+  - **Resultado (2026-11-05, sin `app/core/uow.py`):** cada archivo se corrió sobre una copia nueva de `libreria_b4`. Las **109 peticiones**, comparadas una por una con [linea-de-base.md](linea-de-base.md), dan **0 diferencias** de código o mensaje (200×32, 201×9, 404×14, 405×1, 409×16, 422×37) y **ningún 500**. El log de uvicorn no tiene trazas.
+- [x] 11.2 Confirmar un 409 de cada tipo: unicidad (editorial repetida), clave foránea (libro con editorial inexistente) y CHECK (test unitario de la tarea 1.1, porque los schemas lo frenan antes con 422). Ninguno devuelve texto de la base.
+  - **Resultado:**
+    - **unicidad:** `POST /editoriales/` repetido da 409 "Ya existe una editorial con ese nombre";
+    - **clave foránea:** `POST /libros/` con editorial inexistente da 409 "La editorial, el género o algún autor indicado no existe";
+    - **CHECK:** lo prueban `test_03` (en el bloque) y `test_04` (en el commit) de `tests/test_unit_of_work.py`, con `sqlstate` 23514;
+    - `test_05` comprueba que el `Conflicto` no lleva el texto de la base ni su traza.
+
+    Los 16 409 de los `.http` tienen solo mensajes propios.
+- [x] 11.3 Correr `python -m unittest discover -s tests`: los 12 originales más los nuevos, todos OK.
+  - **Resultado:** `Ran 27 tests — OK` (12 de Hernán, 12 del UoW base y 3 de sesión compartida). Grep final sobre todo el repo (sin `.venv` ni `__pycache__`): `get_uow`, `uow.commit` y `app.core.uow` dan **vacío**, y `app/core/uow.py` no existe. `openspec validate b4-unit-of-work --strict`: válido.
+
+## Workflow follow-up
+
+- Correr `openspec validate b4-unit-of-work`, abrir el PR de la issue #33 y archivar con `/opsx:archive` cuando esté aprobado.

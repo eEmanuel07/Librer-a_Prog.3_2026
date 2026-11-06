@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.core.errors import Conflicto, NoEncontrado
 from app.core.pagination import Paginacion, paginacion
-from app.core.uow import UnitOfWork, get_uow
 from app.modules.editoriales import service
 from app.modules.editoriales.schemas import EditorialCreate, EditorialRead, EditorialUpdate, LibroDeEditorial
+from app.modules.editoriales.unit_of_work import EditorialUnitOfWork, get_editoriales_uow
 
 router = APIRouter(prefix="/editoriales", tags=["editoriales"])
 
@@ -12,7 +12,7 @@ router = APIRouter(prefix="/editoriales", tags=["editoriales"])
 @router.post("/", response_model=EditorialRead, status_code=status.HTTP_201_CREATED)
 async def crear_editorial(
     datos: EditorialCreate,
-    uow: UnitOfWork = Depends(get_uow),
+    uow: EditorialUnitOfWork = Depends(get_editoriales_uow),
 ) -> EditorialRead:
     try:
         return await service.crear_editorial(uow, datos)
@@ -23,7 +23,7 @@ async def crear_editorial(
 @router.get("/", response_model=list[EditorialRead])
 async def listar_editoriales(
     pag: Paginacion = Depends(paginacion),
-    uow: UnitOfWork = Depends(get_uow),
+    uow: EditorialUnitOfWork = Depends(get_editoriales_uow),
 ) -> list[EditorialRead]:
     return await service.listar_editoriales(uow, limit=pag.limit, offset=pag.offset)
 
@@ -31,7 +31,7 @@ async def listar_editoriales(
 @router.get("/{editorial_id}", response_model=EditorialRead)
 async def obtener_editorial(
     editorial_id: int,
-    uow: UnitOfWork = Depends(get_uow),
+    uow: EditorialUnitOfWork = Depends(get_editoriales_uow),
 ) -> EditorialRead:
     try:
         return await service.obtener_editorial(uow, editorial_id)
@@ -43,7 +43,7 @@ async def obtener_editorial(
 async def actualizar_editorial(
     editorial_id: int,
     datos: EditorialUpdate,
-    uow: UnitOfWork = Depends(get_uow),
+    uow: EditorialUnitOfWork = Depends(get_editoriales_uow),
 ) -> EditorialRead:
     try:
         return await service.actualizar_editorial(uow, editorial_id, datos)
@@ -57,7 +57,7 @@ async def actualizar_editorial(
 async def listar_libros_de_editorial(
     editorial_id: int,
     pag: Paginacion = Depends(paginacion),
-    uow: UnitOfWork = Depends(get_uow),
+    uow: EditorialUnitOfWork = Depends(get_editoriales_uow),
 ) -> list[LibroDeEditorial]:
     try:
         return await service.listar_libros_de_editorial(
