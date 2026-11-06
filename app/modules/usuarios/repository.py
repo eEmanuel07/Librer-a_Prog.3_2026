@@ -1,11 +1,46 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import func
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.repository import BaseRepository
-from app.modules.usuarios.models import IntentoAcceso
+from app.modules.usuarios.models import AsignacionRol, IntentoAcceso, Usuario
+
+
+class UsuarioRepository(BaseRepository[Usuario]):
+    """Operaciones de persistencia para el modelo Usuario."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, Usuario)
+
+    async def get_by_email(self, email: str) -> Usuario | None:
+        """Obtiene un usuario por su correo electrónico."""
+        statement = select(Usuario).where(Usuario.email == email)
+        return (await self.session.exec(statement)).first()
+
+
+class AsignacionRolRepository(BaseRepository[AsignacionRol]):
+    """Operaciones de consulta y persistencia para asignaciones de roles."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, AsignacionRol)
+
+    async def listar_roles_vigentes(
+        self, usuario_id: int, ahora: datetime | None = None
+    ) -> list[str]:
+        """Obtiene los roles vigentes (no revocados y sin vencer) de un usuario."""
+        instante = ahora or datetime.now(timezone.utc)
+        statement = (
+            select(AsignacionRol.rol)
+            .where(
+                AsignacionRol.usuario_id == usuario_id,
+                AsignacionRol.revocada_en.is_(None),
+                (AsignacionRol.vence_en.is_(None) | (AsignacionRol.vence_en > instante)),
+            )
+            .order_by(AsignacionRol.rol)
+        )
+        return list((await self.session.exec(statement)).all())
 
 
 class IntentoAccesoRepository(BaseRepository[IntentoAcceso]):
