@@ -65,6 +65,21 @@ def get_roles_token(request: Request) -> list[str]:
     return getattr(request.state, "roles_token", [])
 
 
+async def verificar_cambio_password_pendiente(
+    usuario: Usuario = Depends(get_usuario_actual),
+) -> Usuario:
+    """Bloquea con 403 el acceso al grupo protegido si debe_cambiar_password es True (RN-06).
+
+    Se monta una sola vez en el APIRouter del grupo protegido en main.py.
+    """
+    if usuario.debe_cambiar_password:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Debe cambiar su contraseña provisoria antes de continuar",
+        )
+    return usuario
+
+
 def requiere_rol(*roles_permitidos: str) -> Callable[..., Awaitable[Usuario]]:
     """Verifica que el usuario autenticado tenga al menos uno de los roles vigentes en la base (RN-04).
 

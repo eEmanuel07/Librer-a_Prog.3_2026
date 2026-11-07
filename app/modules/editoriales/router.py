@@ -1,17 +1,26 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from app.core.dependencies import requiere_rol
 from app.core.errors import Conflicto, NoEncontrado
-from app.core.pagination import Paginacion, paginacion
+from app.core.paginacion import Pagina, ParametrosPagina, parametros_pagina
 from app.modules.editoriales import service
-from app.modules.editoriales.schemas import EditorialCreate, EditorialRead, EditorialUpdate, LibroDeEditorial
+from app.modules.editoriales.schemas import (
+    EditorialCreate,
+    EditorialRead,
+    EditorialUpdate,
+    LibroDeEditorial,
+)
 from app.modules.editoriales.unit_of_work import EditorialUnitOfWork, get_editoriales_uow
+from app.modules.usuarios.models import Usuario
 
-router = APIRouter(prefix="/editoriales", tags=["editoriales"])
+router_publico = APIRouter(prefix="/editoriales", tags=["editoriales"])
+router_protegido = APIRouter(prefix="/editoriales", tags=["editoriales"])
 
 
-@router.post("/", response_model=EditorialRead, status_code=status.HTTP_201_CREATED)
+@router_protegido.post("/", response_model=EditorialRead, status_code=status.HTTP_201_CREATED)
 async def crear_editorial(
     datos: EditorialCreate,
+    _actor: Usuario = Depends(requiere_rol("ADMIN")),
     uow: EditorialUnitOfWork = Depends(get_editoriales_uow),
 ) -> EditorialRead:
     try:
@@ -20,15 +29,15 @@ async def crear_editorial(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=error.mensaje) from None
 
 
-@router.get("/", response_model=list[EditorialRead])
+@router_publico.get("/", response_model=Pagina[EditorialRead])
 async def listar_editoriales(
-    pag: Paginacion = Depends(paginacion),
+    params: ParametrosPagina = Depends(parametros_pagina),
     uow: EditorialUnitOfWork = Depends(get_editoriales_uow),
-) -> list[EditorialRead]:
-    return await service.listar_editoriales(uow, limit=pag.limit, offset=pag.offset)
+) -> Pagina[EditorialRead]:
+    return await service.listar_editoriales(uow, params)
 
 
-@router.get("/{editorial_id}", response_model=EditorialRead)
+@router_publico.get("/{editorial_id}", response_model=EditorialRead)
 async def obtener_editorial(
     editorial_id: int,
     uow: EditorialUnitOfWork = Depends(get_editoriales_uow),
@@ -39,10 +48,11 @@ async def obtener_editorial(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error.mensaje) from None
 
 
-@router.patch("/{editorial_id}", response_model=EditorialRead)
+@router_protegido.patch("/{editorial_id}", response_model=EditorialRead)
 async def actualizar_editorial(
     editorial_id: int,
     datos: EditorialUpdate,
+    _actor: Usuario = Depends(requiere_rol("ADMIN")),
     uow: EditorialUnitOfWork = Depends(get_editoriales_uow),
 ) -> EditorialRead:
     try:
@@ -53,15 +63,18 @@ async def actualizar_editorial(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=error.mensaje) from None
 
 
-@router.get("/{editorial_id}/libros", response_model=list[LibroDeEditorial])
+@router_publico.get("/{editorial_id}/libros", response_model=Pagina[LibroDeEditorial])
 async def listar_libros_de_editorial(
     editorial_id: int,
-    pag: Paginacion = Depends(paginacion),
+    params: ParametrosPagina = Depends(parametros_pagina),
     uow: EditorialUnitOfWork = Depends(get_editoriales_uow),
-) -> list[LibroDeEditorial]:
+) -> Pagina[LibroDeEditorial]:
     try:
-        return await service.listar_libros_de_editorial(
-            uow, editorial_id, limit=pag.limit, offset=pag.offset
-        )
+        return await service.listar_libros_de_editorial(uow, editorial_id, params)
     except NoEncontrado as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error.mensaje) from None
+
+
+router = APIRouter()
+router.include_router(router_publico)
+router.include_router(router_protegido)
