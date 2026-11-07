@@ -8,6 +8,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import Settings
 from app.core.errors import Conflicto, NoEncontrado
+from app.core.paginacion import Pagina, ParametrosPagina
 from app.core.security import crear_access_token, hashear_password, verificar_password
 from app.modules.clientes.models import Cliente
 from app.modules.usuarios.models import AsignacionRol, EventoSeguridad, Usuario
@@ -17,6 +18,7 @@ from app.modules.usuarios.schemas import (
     CambioPasswordRequest,
     CrearPersonalRequest,
     CredencialesInvalidasError,
+    EventoSeguridadRead,
     LimiteIntentosError,
     LoginRequest,
     MensajeResponse,
@@ -326,7 +328,7 @@ async def revocar_rol(
     return AsignacionRolRead.desde_modelo(abierta, ahora=ahora)
 
 
-# --- Alta de Personal (Ej. 5 / [R4]) ---
+# --- Alta de Personal y Eventos (Ej. 5 / [R4], [R6]) ---
 
 
 async def crear_personal(
@@ -363,3 +365,17 @@ async def crear_personal(
         )
 
     return UsuarioRead.model_validate(usuario)
+
+
+async def listar_eventos(
+    uow: UsuarioUnitOfWork,
+    params: ParametrosPagina,
+) -> Pagina[EventoSeguridadRead]:
+    """Lista los eventos de seguridad paginados con el envoltorio Pagina (Ej. 3, [R6])."""
+    async with uow:
+        eventos, total = await uow.eventos.listar_pagina(params)
+        return Pagina.armar(
+            [EventoSeguridadRead.model_validate(e, from_attributes=True) for e in eventos],
+            total,
+            params,
+        )

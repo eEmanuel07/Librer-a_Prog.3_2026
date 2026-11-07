@@ -5,6 +5,7 @@ from sqlalchemy import func
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.paginacion import ParametrosPagina, paginar
 from app.core.repository import BaseRepository
 from app.modules.usuarios.models import (
     AsignacionRol,
@@ -130,3 +131,10 @@ class EventoSeguridadRepository(BaseRepository[EventoSeguridad]):
 
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(session, EventoSeguridad)
+
+    async def listar_pagina(
+        self, params: ParametrosPagina
+    ) -> tuple[Sequence[EventoSeguridad], int]:
+        """Devuelve una página de eventos de seguridad ordenada por id y el total (Ej. 3, [R6])."""
+        consulta = select(EventoSeguridad).order_by(EventoSeguridad.id)
+        return await paginar(self.session, consulta, params)
