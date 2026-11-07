@@ -3,6 +3,7 @@ import logging
 from decimal import Decimal
 
 from app.core.errors import Conflicto, NoEncontrado, SinPermiso
+from app.core.paginacion import Pagina, ParametrosPagina
 from app.modules.usuarios.models import Usuario
 from app.modules.ventas.models import RenglonVenta, Venta
 from app.modules.ventas.schemas import VentaCreate, VentaRead, VentaResumen
@@ -15,7 +16,14 @@ logger = logging.getLogger("uvicorn.error")
 
 _DETALLE_NO_EXISTE = "La venta no existe"
 _DETALLE_AJENA = "No tenés permiso para ver esta venta"
+_LISTADO_SIN_PERMISO = "No tenés permiso para ver todas las ventas"
 _ROLES_PERSONAL = {"VENDEDOR", "ADMIN"}
+
+
+async def _es_personal(uow: VentaUnitOfWork, usuario: Usuario) -> bool:
+    """VENDEDOR o ADMIN según los roles vigentes en la base, no los del token (RN-04)."""
+    roles = await uow.roles.listar_roles_vigentes(usuario.id)
+    return not _ROLES_PERSONAL.isdisjoint(roles)
 
 
 # ---------- Lecturas con precarga (sin N+1) ----------
@@ -40,8 +48,7 @@ async def ver_venta(uow: VentaUnitOfWork, venta_id: int, usuario: Usuario) -> Ve
     quien pide no es personal ni el dueño.
     """
     async with uow:
-        roles = await uow.roles.listar_roles_vigentes(usuario.id)
-        if _ROLES_PERSONAL.isdisjoint(roles):
+        if not await _es_personal(uow, usuario):
             dueno = await uow.ventas.obtener_dueno(venta_id)
             if dueno is None:
                 raise NoEncontrado(_DETALLE_NO_EXISTE)
@@ -55,10 +62,32 @@ async def ver_venta(uow: VentaUnitOfWork, venta_id: int, usuario: Usuario) -> Ve
         return VentaRead.desde_modelo(venta)
 
 
-async def listar_ventas(uow: VentaUnitOfWork, limit: int, offset: int) -> list[VentaResumen]:
+async def listar_ventas(
+    uow: VentaUnitOfWork, params: ParametrosPagina, usuario: Usuario
+) -> Pagina[VentaResumen]:
+    """Todas las ventas, paginadas, para el personal (VENDEDOR o ADMIN).
+
+    Mientras no esté ``requiere_rol`` (R2), el rol se controla acá con los roles
+    vigentes en la base (RN-04): 403 si quien pide no es personal.
+    """
     async with uow:
-        ventas = await uow.ventas.listar(limit, offset)
-        return [VentaResumen.desde_modelo(v) for v in ventas]
+        if not await _es_personal(uow, usuario):
+            raise SinPermiso(_LISTADO_SIN_PERMISO)
+        ventas, total = await uow.ventas.listar_pagina(params)
+        return Pagina.armar([VentaResumen.desde_modelo(v) for v in ventas], total, params)
+
+
+async def listar_mis_ventas(
+    uow: VentaUnitOfWork, params: ParametrosPagina, usuario: Usuario
+) -> Pagina[VentaResumen]:
+    """Las ventas del cliente asociado al usuario, paginadas (RN-14).
+
+    Sólo pide estar autenticado. Un usuario sin ficha de cliente (por ejemplo,
+    del personal) recibe una página vacía.
+    """
+    async with uow:
+        ventas, total = await uow.ventas.listar_pagina(params, usuario_id=usuario.id)
+        return Pagina.armar([VentaResumen.desde_modelo(v) for v in ventas], total, params)
 
 
 # ---------- Alta ----------

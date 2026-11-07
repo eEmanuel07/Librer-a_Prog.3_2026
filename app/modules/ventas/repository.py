@@ -5,6 +5,7 @@ from sqlalchemy.orm import joinedload, selectinload
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.paginacion import ParametrosPagina, paginar
 from app.core.repository import BaseRepository
 from app.modules.clientes.models import Cliente
 from app.modules.ventas.models import RenglonVenta, Venta
@@ -55,13 +56,18 @@ class VentaRepository(BaseRepository[Venta]):
         )
         return (await self.session.exec(consulta)).first()
 
-    async def listar(self, limit: int, offset: int) -> Sequence[Venta]:
-        # Una sola consulta: venta JOIN cliente.
-        consulta = (
-            select(Venta)
-            .options(joinedload(Venta.cliente))
-            .order_by(Venta.id)
-            .limit(limit)
-            .offset(offset)
-        )
-        return (await self.session.exec(consulta)).all()
+    async def listar_pagina(
+        self, params: ParametrosPagina, usuario_id: int | None = None
+    ) -> tuple[Sequence[Venta], int]:
+        """Una página de ventas con su cliente, y el total: ``(items, total)``.
+
+        Con ``usuario_id``, sólo las del cliente asociado a ese usuario (/mis-ventas).
+        Dos consultas fijas, sin importar el tamaño de la página: el conteo y
+        la página (venta JOIN cliente). PaginaInexistente si page pasa de la última.
+        """
+        consulta = select(Venta).options(joinedload(Venta.cliente)).order_by(Venta.id)
+        if usuario_id is not None:
+            consulta = consulta.join(Cliente, Venta.cliente_id == Cliente.id).where(
+                Cliente.usuario_id == usuario_id
+            )
+        return await paginar(self.session, consulta, params)

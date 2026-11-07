@@ -2,13 +2,15 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 
 from app.core.dependencies import get_usuario_actual
 from app.core.errors import Conflicto, NoEncontrado, SinPermiso
-from app.core.pagination import Paginacion, paginacion
+from app.core.paginacion import Pagina, ParametrosPagina, parametros_pagina
 from app.modules.usuarios.models import Usuario
 from app.modules.ventas import service
 from app.modules.ventas.schemas import VentaCreate, VentaRead, VentaResumen
 from app.modules.ventas.unit_of_work import VentaUnitOfWork, get_ventas_uow
 
 router = APIRouter(prefix="/ventas", tags=["ventas"])
+# /mis-ventas cuelga de la raíz, no de /ventas: va en un router aparte del mismo módulo.
+router_mis_ventas = APIRouter(tags=["ventas"])
 
 # No hay PATCH ni DELETE: las ventas registran un hecho y no se modifican (RN-08).
 
@@ -33,12 +35,17 @@ async def crear_venta(
     return venta
 
 
-@router.get("/", response_model=list[VentaResumen])
+@router.get("/", response_model=Pagina[VentaResumen])
 async def listar_ventas(
-    pag: Paginacion = Depends(paginacion),  # RN-10: helper común
+    params: ParametrosPagina = Depends(parametros_pagina),  # page y size: 422 si no cumplen
     uow: VentaUnitOfWork = Depends(get_ventas_uow),
-) -> list[VentaResumen]:
-    return await service.listar_ventas(uow, limit=pag.limit, offset=pag.offset)
+    # VENDEDOR o ADMIN: hasta que esté requiere_rol (R2) lo controla el service (403).
+    usuario: Usuario = Depends(get_usuario_actual),
+) -> Pagina[VentaResumen]:
+    try:
+        return await service.listar_ventas(uow, params, usuario)
+    except SinPermiso as error:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=error.mensaje) from None
 
 
 @router.get("/{venta_id}", response_model=VentaRead)
@@ -54,3 +61,13 @@ async def obtener_venta(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error.mensaje) from None
     except SinPermiso as error:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=error.mensaje) from None
+
+
+@router_mis_ventas.get("/mis-ventas", response_model=Pagina[VentaResumen])
+async def listar_mis_ventas(
+    params: ParametrosPagina = Depends(parametros_pagina),
+    uow: VentaUnitOfWork = Depends(get_ventas_uow),
+    # Lo propio sólo pide estar autenticado (RN-14).
+    usuario: Usuario = Depends(get_usuario_actual),
+) -> Pagina[VentaResumen]:
+    return await service.listar_mis_ventas(uow, params, usuario)
