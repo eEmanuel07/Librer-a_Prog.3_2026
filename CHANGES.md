@@ -32,6 +32,8 @@
 | `j4-aviso-comprobante` | J4 | Joaquín | [#88](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/88) | En revisión (archivado en su rama) | `openspec/specs/ventas` |
 | `j5-detalle-venta-dueno` | J5 | Joaquín | [#89](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/89) | En revisión (archivado en su rama) | `openspec/specs/ventas` |
 | `j6-mis-ventas-y-ventas` | J6 | Joaquín | por abrir | En revisión (archivado en su rama) | `openspec/specs/ventas` |
+| `r2-requiere-rol` | R2 | Bruno | [#93](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/93) | En revisión (archivado en su rama) | `openspec/specs/autorizacion` |
+| `r5-roles-con-vigencia` | R5 | Bruno | por abrir | En revisión (archivado en su rama) | `openspec/specs/autorizacion` |
 
 La fundación de Active Stack (`knowledge-base/`, `CHANGES.md`, `AGENTS.md`, `CLAUDE.md`) quedó mergeada en [#78](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/78). Las demás tareas `[x]` (incluida E6 en [#79](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/79)) no tienen change en `openspec/`.
 
@@ -289,21 +291,21 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `07_flujos_principales.md` §Flujo 3 · `05_reglas_de_negocio.md` RN-01, RN-02 · `06_funcionalidades.md` §Ej. 4
 
 ### [R1] `get-usuario-actual` · #45
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` mergeado (cubierto en PR #85)
 - **Scope**: `app/core/dependencies.py`: `get_usuario_actual` desde la cookie `access_token`, con 401 (sin cookie, token inválido o vencido, usuario inexistente o inactivo); pide `Depends(get_session)` para compartir la sesión del UoW
 - **Dependencias**: B4, H2 · 🔓 **Destraba: R2, R3, J5**
 - **Governance**: CRITICO
 - **Leer antes**: `03_actores_y_roles.md` §Cómo se decide un permiso · `07_flujos_principales.md` §Flujo 1 · `08_arquitectura_propuesta.md` §Estructura
 
 ### [R5] `roles-con-vigencia` · #49
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama)
 - **Scope**: asignar (vencimiento opcional, con zona y en el futuro, si no 422) y revocar sin borrar la fila; reasignar uno vencido; autoprotección (RN-05, 409); evento en el mismo bloque (RN-16)
 - **Dependencias**: H1, B4 · 🔓 Destraba: R2, R6, R9
 - **Governance**: CRITICO
 - **Leer antes**: `05_reglas_de_negocio.md` RN-03, RN-05, RN-16 · `07_flujos_principales.md` §Flujo 6 · `03_actores_y_roles.md`
 
 ### [R2] `requiere-rol` · #46
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama)
 - **Scope**: `requiere_rol` con 403, consultando los roles vigentes en la base en cada petición (RN-04)
 - **Dependencias**: R1, R5 · 🔓 **Destraba: E4, E5, J3, J7, R4, R7**
 - **Governance**: CRITICO

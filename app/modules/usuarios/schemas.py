@@ -1,8 +1,14 @@
 """Contratos de entrada y salida para el módulo usuarios."""
 
+from datetime import datetime, timezone
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
 from app.core.security import PasswordBcrypt
+from app.modules.usuarios.models import AsignacionRol
+
+RolNombre = Literal["ADMIN", "VENDEDOR", "CLIENTE"]
 
 
 class CredencialesInvalidasError(Exception):
@@ -111,3 +117,68 @@ class CambioPasswordRequest(StrictSchema):
     password_actual: PasswordBcrypt
     password_nueva: PasswordBcrypt
 
+
+# --- Contratos de Roles con Vigencia (Ej. 5 / [R5]) ---
+
+
+def _asegurar_utc(dt: datetime | None) -> datetime | None:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+class AsignarRolRequest(StrictSchema):
+    """Datos de entrada para asignar un rol con vigencia opcional."""
+
+    rol: RolNombre
+    vence_en: datetime | None = None
+
+    @field_validator("vence_en")
+    @classmethod
+    def validar_vencimiento_con_zona_y_futuro(
+        cls, valor: datetime | None
+    ) -> datetime | None:
+        if valor is None:
+            return None
+        if valor.tzinfo is None or valor.utcoffset() is None:
+            raise ValueError("La fecha de vencimiento debe incluir zona horaria.")
+        if valor <= datetime.now(timezone.utc):
+            raise ValueError("La fecha de vencimiento debe estar en el futuro.")
+        return valor
+
+
+class AsignacionRolRead(BaseModel):
+    """Representación de una asignación de rol (vigente, vencida o revocada)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    usuario_id: int
+    rol: str
+    desde: datetime
+    vence_en: datetime | None = None
+    revocada_en: datetime | None = None
+    otorgada_por: int | None = None
+    vigente: bool
+
+    @classmethod
+    def desde_modelo(
+        cls, asignacion: AsignacionRol, ahora: datetime | None = None
+    ) -> "AsignacionRolRead":
+        instante = ahora or datetime.now(timezone.utc)
+        vence = _asegurar_utc(asignacion.vence_en)
+        es_vigente = asignacion.revocada_en is None and (
+            vence is None or vence > instante
+        )
+        return cls(
+            id=asignacion.id,
+            usuario_id=asignacion.usuario_id,
+            rol=asignacion.rol,
+            desde=asignacion.desde,
+            vence_en=asignacion.vence_en,
+            revocada_en=asignacion.revocada_en,
+            otorgada_por=asignacion.otorgada_por,
+            vigente=es_vigente,
+        )

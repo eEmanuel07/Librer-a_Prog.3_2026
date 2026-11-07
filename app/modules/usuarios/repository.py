@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import datetime, timezone
 
 from sqlalchemy import func
@@ -46,6 +47,40 @@ class AsignacionRolRepository(BaseRepository[AsignacionRol]):
             .order_by(AsignacionRol.rol)
         )
         return list((await self.session.exec(statement)).all())
+
+    async def obtener_abierta(self, usuario_id: int, rol: str) -> AsignacionRol | None:
+        """Devuelve la asignación sin revocar (revocada_en IS NULL) de ese rol, o None."""
+        statement = select(AsignacionRol).where(
+            AsignacionRol.usuario_id == usuario_id,
+            AsignacionRol.rol == rol,
+            AsignacionRol.revocada_en.is_(None),
+        )
+        return (await self.session.exec(statement)).first()
+
+    async def listar_de_usuario(self, usuario_id: int) -> Sequence[AsignacionRol]:
+        """Lista todas las asignaciones de rol de un usuario (vigentes, vencidas y revocadas)."""
+        statement = (
+            select(AsignacionRol)
+            .where(AsignacionRol.usuario_id == usuario_id)
+            .order_by(AsignacionRol.id)
+        )
+        return (await self.session.exec(statement)).all()
+
+    async def contar_admins_vigentes(self, ahora: datetime | None = None) -> int:
+        """Cuenta cuántos usuarios activos tienen el rol ADMIN vigente (RN-05)."""
+        instante = ahora or datetime.now(timezone.utc)
+        statement = (
+            select(func.count(func.distinct(AsignacionRol.usuario_id)))
+            .join(Usuario, Usuario.id == AsignacionRol.usuario_id)
+            .where(
+                Usuario.activo.is_(True),
+                AsignacionRol.rol == "ADMIN",
+                AsignacionRol.revocada_en.is_(None),
+                (AsignacionRol.vence_en.is_(None) | (AsignacionRol.vence_en > instante)),
+            )
+        )
+        cantidad = (await self.session.exec(statement)).one()
+        return int(cantidad or 0)
 
 
 class IntentoAccesoRepository(BaseRepository[IntentoAcceso]):
