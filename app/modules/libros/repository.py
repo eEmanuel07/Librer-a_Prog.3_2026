@@ -6,6 +6,7 @@ from sqlmodel import func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.errors import Conflicto
+from app.core.paginacion import ParametrosPagina, paginar
 from app.core.repository import SoftDeleteRepository
 from app.modules.libros.models import Libro, LibroAutor, MovimientoStock
 
@@ -43,10 +44,13 @@ class LibroRepository(SoftDeleteRepository[Libro]):
         )
         return (await self.session.exec(consulta)).first()
 
-    async def listar(
-        self, limit: int, offset: int, titulo: str | None, genero_id: int | None
-    ) -> Sequence[Libro]:
-        # Una sola consulta: libro JOIN editorial JOIN género.
+    async def listar_pagina(
+        self, params: ParametrosPagina, titulo: str | None, genero_id: int | None
+    ) -> tuple[Sequence[Libro], int]:
+        """Una página de libros vigentes y el total con los mismos filtros (Ej. 3).
+
+        Son dos consultas fijas: el total y la página (libro JOIN editorial JOIN género).
+        """
         consulta = (
             select(Libro)
             .where(Libro.borrado_en.is_(None))
@@ -55,11 +59,10 @@ class LibroRepository(SoftDeleteRepository[Libro]):
         if genero_id is not None:
             consulta = consulta.where(Libro.genero_id == genero_id)
         if titulo:
-            # RN-11: parámetro ligado, sin distinguir mayúsculas. autoescape hace
-            # que % y _ del texto buscado se tomen literalmente.
+            # Parámetro ligado, sin distinguir mayúsculas. autoescape hace que
+            # % y _ del texto buscado se tomen literalmente.
             consulta = consulta.where(Libro.titulo.icontains(titulo, autoescape=True))
-        consulta = consulta.order_by(Libro.id).limit(limit).offset(offset)
-        return (await self.session.exec(consulta)).all()
+        return await paginar(self.session, consulta.order_by(Libro.id), params)
 
     async def precios(self, libro_ids: list[int]) -> dict[int, Decimal]:
         """Precio de cada libro vigente pedido; los inexistentes o dados de baja no aparecen."""
@@ -67,9 +70,6 @@ class LibroRepository(SoftDeleteRepository[Libro]):
             select(Libro.id, Libro.precio).where(Libro.id.in_(libro_ids), Libro.borrado_en.is_(None))
         )
         return dict(filas.all())
-
-    def agregar(self, libro: Libro) -> None:
-        self.session.add(libro)
 
     # ---------- Stock: un único punto de escritura (RN-11) ----------
 
