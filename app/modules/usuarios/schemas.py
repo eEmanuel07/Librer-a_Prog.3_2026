@@ -182,3 +182,40 @@ class AsignacionRolRead(BaseModel):
             otorgada_por=asignacion.otorgada_por,
             vigente=es_vigente,
         )
+
+
+# --- Contratos de Alta de Personal y Eventos (Ej. 5 / [R4], [R6]) ---
+
+
+class CrearPersonalRequest(StrictSchema):
+    """Datos de entrada para alta de cuentas del personal con contraseña provisoria."""
+
+    nombre: str
+    email: EmailStr
+    password: PasswordBcrypt
+
+    _email_normalizado = field_validator("email", mode="before")(_normalizar_email)
+    _nombre_normalizado = field_validator("nombre", mode="before")(_validar_nombre_no_vacio)
+
+
+class UsuarioRead(BaseModel):
+    """Representación pública de una cuenta de usuario (nunca incluye password_hash)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: EmailStr
+    nombre: str
+    activo: bool
+    debe_cambiar_password: bool
+
+
+class EventoSeguridadRead(BaseModel):
+    """Representación de una fila del historial de seguridad (RN-16)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    cuando: datetime
+    actor: str
+    accion: str

@@ -50,6 +50,36 @@ El sistema SHALL proveer `DELETE /usuarios/{usuario_id}/roles/{rol}` y `GET /usu
 - **WHEN** un administrador autenticado envía `DELETE /usuarios/{su_propio_id}/roles/ADMIN`
 - **THEN** el sistema responde HTTP 409 Conflict y el rol continúa vigente
 
+### Requirement: Alta de personal con contraseña provisoria y evento de seguridad en la misma transacción (RN-16)
+El sistema SHALL proveer el endpoint `POST /usuarios` (exclusivo para usuarios con rol `ADMIN` vigente) que cree una cuenta de personal con `activo = True` y `debe_cambiar_password = True`, calculando el hash bcrypt antes de abrir la transacción y registrando en el mismo bloque del Unit of Work una fila en `evento_seguridad` con el correo del administrador como `actor`, devolviendo HTTP 201 sin incluir `password_hash`.
+
+#### Scenario: Administrador da de alta a un integrante del personal
+- **WHEN** un administrador autenticado envía `POST /usuarios` con `nombre`, `email` y `password` válidos (hasta 72 bytes UTF-8)
+- **THEN** el sistema crea el usuario con `debe_cambiar_password = True`, registra el evento en `evento_seguridad` en la misma transacción y responde HTTP 201 con los datos del usuario sin `password_hash`
+
+#### Scenario: Alta de personal con correo duplicado responde 409 y no deja evento de seguridad (RN-01, RN-16)
+- **WHEN** un administrador envía `POST /usuarios` con un `email` que ya pertenece a otro usuario
+- **THEN** el sistema revierte la transacción, no deja registro en `evento_seguridad` y responde HTTP 409 Conflict con mensaje propio
+
+#### Scenario: Usuario sin rol ADMIN recibe 403 al intentar dar de alta personal (C-06)
+- **WHEN** un usuario autenticado sin rol `ADMIN` vigente envía `POST /usuarios`
+- **THEN** el sistema responde HTTP 403 Forbidden
+
+### Requirement: Consulta paginada del historial de seguridad (RN-16)
+El sistema SHALL proveer el endpoint `GET /eventos` (exclusivo para usuarios con rol `ADMIN` vigente) que devuelva las filas de `evento_seguridad` dentro del envoltorio de paginación `{items, total, page, size, pages}`, respondiendo HTTP 422 si se solicita una página inexistente y HTTP 403 si el usuario no posee el rol `ADMIN`.
+
+#### Scenario: Administrador consulta el historial de seguridad paginado
+- **WHEN** un administrador autenticado envía `GET /eventos?page=1&size=20`
+- **THEN** el sistema responde HTTP 200 con `{items, total, page, size, pages}` listando las altas de personal, asignaciones/revocaciones de rol, cambios de contraseña y eventos del sistema
+
+#### Scenario: Página más allá de la última en GET /eventos responde 422
+- **WHEN** un administrador solicita una página mayor a `pages` en `GET /eventos`
+- **THEN** el sistema responde HTTP 422 Unprocessable Entity
+
+#### Scenario: Usuario sin rol ADMIN recibe 403 en GET /eventos
+- **WHEN** un usuario autenticado sin rol `ADMIN` vigente envía `GET /eventos`
+- **THEN** el sistema responde HTTP 403 Forbidden
+
 ### Requirement: Protección RBAC y paginación con envoltorio en editoriales, géneros y autores
 El sistema SHALL exigir el rol `ADMIN` vigente (`Depends(requiere_rol("ADMIN"))`) en todas las operaciones de escritura (`POST` y `PATCH`) de `editoriales`, `generos` y `autores`, mantener públicas sus lecturas (`GET`), devolver todos sus listados con el envoltorio `{items, total, page, size, pages}` de `app/core/paginacion.py`, y excluir los libros dados de baja (`borrado_en IS NOT NULL`, RN-13) de los listados `/{id}/libros`.
 
