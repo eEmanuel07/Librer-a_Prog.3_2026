@@ -38,6 +38,7 @@
 | `r2-requiere-rol` | R2 | Bruno | [#93](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/93) | Mergeado y archivado | `openspec/specs/autorizacion` |
 | `r5-roles-con-vigencia` | R5 | Bruno | [#94](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/94) | Mergeado y archivado | `openspec/specs/autorizacion` |
 | `r4-alta-de-personal` | R4 | Bruno | [#96](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/96) | En revisión (archivado en su rama) | `openspec/specs/autorizacion` |
+| `r6-eventos-paginado` | R6 | Bruno | por abrir | En revisión (archivado en su rama) | `openspec/specs/autorizacion` |
 
 La fundación de Active Stack (`knowledge-base/`, `CHANGES.md`, `AGENTS.md`, `CLAUDE.md`) quedó mergeada en [#78](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/78). Las demás tareas `[x]` (incluida E6 en [#79](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/79)) no tienen change en `openspec/`.
 
@@ -330,7 +331,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `05_reglas_de_negocio.md` RN-16 · `03_actores_y_roles.md` · `07_flujos_principales.md` §Flujo 6
 
 ### [R6] `eventos-paginado` · #50
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama)
 - **Scope**: `GET /eventos` paginado con el envoltorio (ADMIN)
 - **Dependencias**: R4, R5, B5
 - **Governance**: ALTO

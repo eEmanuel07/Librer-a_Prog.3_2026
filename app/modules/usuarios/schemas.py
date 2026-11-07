@@ -184,7 +184,7 @@ class AsignacionRolRead(BaseModel):
         )
 
 
-# --- Contratos de Alta de Personal (Ej. 5 / [R4]) ---
+# --- Contratos de Alta de Personal y Eventos (Ej. 5 / [R4], [R6]) ---
 
 
 class CrearPersonalRequest(StrictSchema):
@@ -208,3 +208,14 @@ class UsuarioRead(BaseModel):
     nombre: str
     activo: bool
     debe_cambiar_password: bool
+
+
+class EventoSeguridadRead(BaseModel):
+    """Representación de una fila del historial de seguridad (RN-16)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    cuando: datetime
+    actor: str
+    accion: str
