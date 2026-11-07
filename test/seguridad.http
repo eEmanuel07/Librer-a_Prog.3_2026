@@ -1,0 +1,320 @@
+@host = http://localhost:8000
+@contentType = application/json
+
+# ==============================================================================
+# CASOS DE PRUEBA MÍNIMOS: AUTORIZACIÓN Y SEGURIDAD (C-06 a C-09) - Consigna págs. 21-23
+# Antes de ejecutar este archivo, correr:
+#   python seed.py
+#
+# Usuarios cargados por seed.py:
+#   id 1: admin@example.com    (ADMIN,    password: Admin123!)
+#   id 2: admin2@example.com   (ADMIN,    password: Admin123!)
+#   id 3: vendedor@example.com (VENDEDOR, password: Vendedor123!)
+#   id 4: ana@example.com      (CLIENTE,  password: Cliente123!, cliente Ana Paz)
+#   id 5: nuevo@example.com    (VENDEDOR, password: Provisoria123!, debe_cambiar_password=true)
+#
+# Cada login tiene # @name y cada pedido usa # @no-cookie-jar con el encabezado
+# Cookie: {{loginX.response.headers.Set-Cookie}} para mantener varias sesiones abiertas.
+# ==============================================================================
+
+### Inicio de sesión: ADMIN principal (id 1)
+# Esperado: 200 OK con Set-Cookie: access_token=...; HttpOnly
+# @name loginAdmin
+# @no-cookie-jar
+POST {{host}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "admin@example.com",
+  "password": "Admin123!"
+}
+
+
+### Inicio de sesión: VENDEDOR (id 3)
+# Esperado: 200 OK con Set-Cookie: access_token=...; HttpOnly
+# @name loginVendedor
+# @no-cookie-jar
+POST {{host}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "vendedor@example.com",
+  "password": "Vendedor123!"
+}
+
+
+### Inicio de sesión: CLIENTE Ana Paz (id 4)
+# Esperado: 200 OK con Set-Cookie: access_token=...; HttpOnly
+# @name loginAna
+# @no-cookie-jar
+POST {{host}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "ana@example.com",
+  "password": "Cliente123!"
+}
+
+
+### Inicio de sesión: Personal con cambio obligatorio de contraseña (id 5)
+# Esperado: 200 OK con {"mensaje": "Sesión iniciada", "debe_cambiar_password": true, ...}
+# @name loginNuevo
+# @no-cookie-jar
+POST {{host}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "nuevo@example.com",
+  "password": "Provisoria123!"
+}
+
+
+# ==============================================================================
+# C-06 · 401 sin sesión contra 403 por rol insuficiente, y acceso a lo propio (RN-04, RN-14)
+# ==============================================================================
+
+### C-06 (a) · Petición sin sesión a una ruta protegida de escritura
+# Esperado: 401 Unauthorized (no hay cookie access_token)
+# @no-cookie-jar
+POST {{host}}/editoriales/
+Content-Type: {{contentType}}
+
+{
+  "nombre": "Editorial Sin Sesion",
+  "pais": "Argentina"
+}
+
+
+### C-06 (b) · Petición sin sesión a /mis-ventas
+# Esperado: 401 Unauthorized
+# @no-cookie-jar
+GET {{host}}/mis-ventas
+
+
+### C-06 (c) · Usuario autenticado (VENDEDOR) sin el rol ADMIN requerido en catálogo
+# Esperado: 403 Forbidden (está autenticado, pero requiere_rol("ADMIN") lo rechaza)
+# @no-cookie-jar
+POST {{host}}/editoriales/
+Content-Type: {{contentType}}
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
+
+{
+  "nombre": "Editorial Por Vendedor",
+  "pais": "Argentina"
+}
+
+
+### C-06 (d) · Usuario autenticado (VENDEDOR) intenta dar de alta personal o ver eventos
+# Esperado: 403 Forbidden
+# @no-cookie-jar
+GET {{host}}/eventos
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
+
+
+### C-06 (e) · ADMIN realiza la misma operación sobre el catálogo
+# Esperado: 201 Created
+# @no-cookie-jar
+POST {{host}}/editoriales/
+Content-Type: {{contentType}}
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+
+{
+  "nombre": "Editorial C-06 Admin",
+  "pais": "Argentina"
+}
+
+
+### C-06 (f) · Acceso a lo propio (RN-14): CLIENTE consulta sus propias ventas (/mis-ventas)
+# Sólo pide estar autenticado; Ana Paz ve únicamente sus ventas (página vacía al inicio).
+# Esperado: 200 OK con envoltorio {"items": [], "total": 0, "page": 1, "size": 20, "pages": 1}
+# @no-cookie-jar
+GET {{host}}/mis-ventas
+Cookie: {{loginAna.response.headers.Set-Cookie}}
+
+
+### C-06 (g) · Acceso a lo propio (RN-14): CLIENTE intenta ver la venta 1 (que es de Lucía Fernández)
+# Esperado: 403 Forbidden {"detail": "No tenés permiso para ver esta venta"}
+# @no-cookie-jar
+GET {{host}}/ventas/1
+Cookie: {{loginAna.response.headers.Set-Cookie}}
+
+
+### C-06 (h) · El personal (VENDEDOR) sí puede ver el detalle de la venta 1 de Lucía
+# Esperado: 200 OK con la venta 1 (total 69000.00)
+# @no-cookie-jar
+GET {{host}}/ventas/1
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
+
+
+# ==============================================================================
+# C-07 · Revocar un rol con la sesión ya abierta corta el permiso de inmediato (RN-04)
+# ==============================================================================
+
+### C-07 (a) · Antes de revocar: VENDEDOR (id 3) tiene sesión abierta y accede a GET /ventas
+# Esperado: 200 OK
+# @no-cookie-jar
+GET {{host}}/ventas/
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
+
+
+### C-07 (b) · ADMIN revoca el rol VENDEDOR del usuario 3 (escribe revocada_en, no borra la fila)
+# En la misma transacción deja una fila en evento_seguridad (RN-16).
+# Esperado: 200 OK con "vigente": false y "revocada_en" con fecha
+# @no-cookie-jar
+DELETE {{host}}/usuarios/3/roles/VENDEDOR
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+
+
+### C-07 (c) · Petición siguiente del VENDEDOR con la MISMA cookie emitida antes de la revocación
+# Aunque el JWT sigue teniendo "roles": ["VENDEDOR"], requiere_rol consulta la base en cada petición.
+# Esperado: 403 Forbidden
+# @no-cookie-jar
+GET {{host}}/ventas/
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
+
+
+### C-07 (d) · GET /auth/yo con esa misma cookie muestra el contraste entre la base y el token
+# Esperado: 200 OK con "roles": [] (en la base) y "roles_token": ["VENDEDOR"] (informativo en el JWT)
+# @no-cookie-jar
+GET {{host}}/auth/yo
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
+
+
+### C-07 (e) · ADMIN vuelve a otorgar el rol VENDEDOR al usuario 3 (abre una nueva asignación)
+# Esperado: 201 Created con "vigente": true y "revocada_en": null
+# @no-cookie-jar
+POST {{host}}/usuarios/3/roles
+Content-Type: {{contentType}}
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+
+{
+  "rol": "VENDEDOR"
+}
+
+
+# ==============================================================================
+# C-08 · Autoprotección de ADMIN (RN-05), unicidad de rol abierto (RN-03) y vigencia (422)
+# ==============================================================================
+
+### C-08 (a) · Un ADMIN no puede revocarse su propio rol ADMIN (RN-05)
+# admin@example.com (id 1) intenta revocarse ADMIN a sí mismo.
+# Esperado: 409 Conflict {"detail": "Un administrador no puede revocarse su propio rol ADMIN"}
+# @no-cookie-jar
+DELETE {{host}}/usuarios/1/roles/ADMIN
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+
+
+### C-08 (b) · Asignar un rol que el usuario ya tiene vigente da 409 (RN-03)
+# El índice único parcial (usuario_id, rol) WHERE revocada_en IS NULL lo rechaza.
+# Esperado: 409 Conflict
+# @no-cookie-jar
+POST {{host}}/usuarios/3/roles
+Content-Type: {{contentType}}
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+
+{
+  "rol": "VENDEDOR"
+}
+
+
+### C-08 (c) · Vencimiento inválido: fecha sin zona horaria
+# Esperado: 422 Unprocessable Entity (nunca 409 ni 500)
+# @no-cookie-jar
+POST {{host}}/usuarios/3/roles
+Content-Type: {{contentType}}
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+
+{
+  "rol": "ADMIN",
+  "vence_en": "2099-12-31T23:59:59"
+}
+
+
+### C-08 (d) · Vencimiento inválido: fecha en el pasado
+# Esperado: 422 Unprocessable Entity
+# @no-cookie-jar
+POST {{host}}/usuarios/3/roles
+Content-Type: {{contentType}}
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+
+{
+  "rol": "ADMIN",
+  "vence_en": "2020-01-01T00:00:00Z"
+}
+
+
+### C-08 (e) · Historial de asignaciones de rol del usuario 3 (incluye la revocada y la vigente)
+# Esperado: 200 OK con 2 filas de VENDEDOR (una con revocada_en y otra vigente)
+# @no-cookie-jar
+GET {{host}}/usuarios/3/roles
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+
+
+# ==============================================================================
+# C-09 · Cambio obligatorio de contraseña (RN-06) y auditoría en evento_seguridad (RN-16)
+# ==============================================================================
+
+### C-09 (a) · Con cambio pendiente, nuevo@example.com recibe 403 en cualquier ruta del grupo protegido
+# Esperado: 403 Forbidden {"detail": "Debe cambiar su contraseña provisoria antes de continuar"}
+# @no-cookie-jar
+GET {{host}}/ventas/
+Cookie: {{loginNuevo.response.headers.Set-Cookie}}
+
+
+### C-09 (b) · Con cambio pendiente, también recibe 403 en /mis-ventas (grupo protegido)
+# Esperado: 403 Forbidden
+# @no-cookie-jar
+GET {{host}}/mis-ventas
+Cookie: {{loginNuevo.response.headers.Set-Cookie}}
+
+
+### C-09 (c) · Con cambio pendiente, SÍ puede usar GET /auth/yo (grupo abierto)
+# Esperado: 200 OK con "debe_cambiar_password": true
+# @no-cookie-jar
+GET {{host}}/auth/yo
+Cookie: {{loginNuevo.response.headers.Set-Cookie}}
+
+
+### C-09 (d) · Con cambio pendiente, SÍ puede usar POST /auth/cambiar-password (grupo abierto)
+# Actualiza password_hash, pasa debe_cambiar_password a false y anota en evento_seguridad (RN-16).
+# No invalida la sesión ni necesita emitir un token nuevo.
+# Esperado: 200 OK {"mensaje": "Contraseña actualizada exitosamente"}
+# @no-cookie-jar
+POST {{host}}/auth/cambiar-password
+Content-Type: {{contentType}}
+Cookie: {{loginNuevo.response.headers.Set-Cookie}}
+
+{
+  "password_actual": "Provisoria123!",
+  "password_nueva": "Definitiva456!"
+}
+
+
+### C-09 (e) · Después de cambiar la contraseña, la MISMA sesión ya accede al grupo protegido
+# Esperado: 200 OK con el listado paginado de ventas
+# @no-cookie-jar
+GET {{host}}/ventas/
+Cookie: {{loginNuevo.response.headers.Set-Cookie}}
+
+
+### C-09 (f) · Alta de nuevo personal por ADMIN (deja debe_cambiar_password=true y evento RN-16)
+# Esperado: 201 Created con "debe_cambiar_password": true (sin devolver password_hash)
+# @no-cookie-jar
+POST {{host}}/usuarios
+Content-Type: {{contentType}}
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+
+{
+  "nombre": "Personal C-09",
+  "email": "personal.c09@example.com",
+  "password": "Temporal789!"
+}
+
+
+### C-09 (g) · Historial de seguridad paginado (GET /eventos, solo ADMIN)
+# Muestra la fila inicial con actor "SISTEMA" ("Carga de los datos iniciales") y los eventos
+# registrados en las pruebas anteriores (revocación, asignación, cambio de contraseña y alta).
+# Esperado: 200 OK con envoltorio {"items": [...], "total": ..., "page": 1, "size": 20, "pages": ...}
+# @no-cookie-jar
+GET {{host}}/eventos
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
