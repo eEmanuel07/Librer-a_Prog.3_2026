@@ -1,22 +1,33 @@
 from collections.abc import Sequence
 
+from sqlalchemy import Row
 from sqlalchemy.orm import joinedload, selectinload
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.paginacion import ParametrosPagina, paginar
+from app.core.repository import BaseRepository
+from app.modules.clientes.models import Cliente
 from app.modules.ventas.models import RenglonVenta, Venta
 
 
-class VentaRepository:
-    """Solo consultas sobre ventas. No hace commit: eso es del UoW."""
+class VentaRepository(BaseRepository[Venta]):
+    """Consultas sobre ventas. No hace commit: eso es del UoW.
+
+    ``add`` (de BaseRepository) hace flush: al registrar una venta hace falta su
+    id antes de anotar los movimientos de stock, que la referencian. La cascada
+    de ``Venta.renglones`` agrega también los renglones.
+    """
 
     def __init__(self, session: AsyncSession) -> None:
-        self.session = session
+        super().__init__(session, Venta)
 
     async def obtener_con_detalle(self, venta_id: int) -> Venta | None:
         # Cantidad fija de consultas, sin importar cuántos renglones tenga (C-07):
         #   1) venta JOIN cliente          -> joinedload (relación a uno)
         #   2) renglones JOIN libro        -> selectinload (colección) + joinedload (a uno)
+        # El libro se trae por su clave foránea, sin filtrar borrado_en: una venta
+        # vieja sigue mostrando el título aunque el libro esté dado de baja.
         consulta = (
             select(Venta)
             .where(Venta.id == venta_id)
@@ -30,17 +41,33 @@ class VentaRepository:
         )
         return (await self.session.exec(consulta)).first()
 
-    async def listar(self, limit: int, offset: int) -> Sequence[Venta]:
-        # Una sola consulta: venta JOIN cliente.
-        consulta = (
-            select(Venta)
-            .options(joinedload(Venta.cliente))
-            .order_by(Venta.id)
-            .limit(limit)
-            .offset(offset)
-        )
-        return (await self.session.exec(consulta)).all()
+    async def obtener_dueno(self, venta_id: int) -> Row[tuple[int, int | None]] | None:
+        """El usuario web del cliente de la venta, para decidir si la puede ver (RN-14).
 
-    def agregar(self, venta: Venta) -> None:
-        # La cascada de Venta.renglones agrega también los renglones.
-        self.session.add(venta)
+        Una sola consulta (venta JOIN cliente), sin traer renglones: la decisión
+        se toma antes de cargar el detalle. ``None`` si la venta no existe; si
+        existe, la fila ``(venta_id, usuario_id)``, con ``usuario_id`` en
+        ``None`` cuando el cliente no tiene acceso web.
+        """
+        consulta = (
+            select(Venta.id, Cliente.usuario_id)
+            .join(Cliente, Venta.cliente_id == Cliente.id)
+            .where(Venta.id == venta_id)
+        )
+        return (await self.session.exec(consulta)).first()
+
+    async def listar_pagina(
+        self, params: ParametrosPagina, usuario_id: int | None = None
+    ) -> tuple[Sequence[Venta], int]:
+        """Una página de ventas con su cliente, y el total: ``(items, total)``.
+
+        Con ``usuario_id``, sólo las del cliente asociado a ese usuario (/mis-ventas).
+        Dos consultas fijas, sin importar el tamaño de la página: el conteo y
+        la página (venta JOIN cliente). PaginaInexistente si page pasa de la última.
+        """
+        consulta = select(Venta).options(joinedload(Venta.cliente)).order_by(Venta.id)
+        if usuario_id is not None:
+            consulta = consulta.join(Cliente, Venta.cliente_id == Cliente.id).where(
+                Cliente.usuario_id == usuario_id
+            )
+        return await paginar(self.session, consulta, params)

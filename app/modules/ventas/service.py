@@ -2,7 +2,9 @@ import asyncio
 import logging
 from decimal import Decimal
 
-from app.core.errors import Conflicto, NoEncontrado
+from app.core.errors import Conflicto, NoEncontrado, SinPermiso
+from app.core.paginacion import Pagina, ParametrosPagina
+from app.modules.usuarios.models import Usuario
 from app.modules.ventas.models import RenglonVenta, Venta
 from app.modules.ventas.schemas import VentaCreate, VentaRead, VentaResumen
 from app.modules.ventas.unit_of_work import VentaUnitOfWork
@@ -13,12 +15,22 @@ from app.modules.ventas.unit_of_work import VentaUnitOfWork
 logger = logging.getLogger("uvicorn.error")
 
 _DETALLE_NO_EXISTE = "La venta no existe"
+_DETALLE_AJENA = "No tenés permiso para ver esta venta"
+_LISTADO_SIN_PERMISO = "No tenés permiso para ver todas las ventas"
+_ROLES_PERSONAL = {"VENDEDOR", "ADMIN"}
+
+
+async def _es_personal(uow: VentaUnitOfWork, usuario: Usuario) -> bool:
+    """VENDEDOR o ADMIN según los roles vigentes en la base, no los del token (RN-04)."""
+    roles = await uow.roles.listar_roles_vigentes(usuario.id)
+    return not _ROLES_PERSONAL.isdisjoint(roles)
 
 
 # ---------- Lecturas con precarga (sin N+1) ----------
 
 
 async def obtener_venta(uow: VentaUnitOfWork, venta_id: int) -> VentaRead:
+    """El detalle, sin control de acceso: lo usa el alta para devolver la venta recién creada."""
     async with uow:
         venta = await uow.ventas.obtener_con_detalle(venta_id)
         if venta is None:
@@ -26,54 +38,117 @@ async def obtener_venta(uow: VentaUnitOfWork, venta_id: int) -> VentaRead:
         return VentaRead.desde_modelo(venta)
 
 
-async def listar_ventas(uow: VentaUnitOfWork, limit: int, offset: int) -> list[VentaResumen]:
+async def ver_venta(uow: VentaUnitOfWork, venta_id: int, usuario: Usuario) -> VentaRead:
+    """El detalle de una venta para el personal o para el cliente dueño (RN-14).
+
+    La ruta no lleva ``requiere_rol``: un cliente puede ver su propia venta sin
+    tener un rol de personal. Decide el service, en este orden: primero quién
+    es (roles vigentes en la base, RN-04) y qué relación tiene con la venta, y
+    recién después qué se devuelve. 404 si la venta no existe; 403 si existe y
+    quien pide no es personal ni el dueño.
+    """
     async with uow:
-        ventas = await uow.ventas.listar(limit, offset)
-        return [VentaResumen.desde_modelo(v) for v in ventas]
+        if not await _es_personal(uow, usuario):
+            dueno = await uow.ventas.obtener_dueno(venta_id)
+            if dueno is None:
+                raise NoEncontrado(_DETALLE_NO_EXISTE)
+            if dueno.usuario_id != usuario.id:
+                raise SinPermiso(_DETALLE_AJENA)
+        # Número fijo de consultas, aunque tenga muchos renglones o algún libro
+        # esté dado de baja (C-15).
+        venta = await uow.ventas.obtener_con_detalle(venta_id)
+        if venta is None:
+            raise NoEncontrado(_DETALLE_NO_EXISTE)
+        return VentaRead.desde_modelo(venta)
+
+
+async def listar_ventas(
+    uow: VentaUnitOfWork, params: ParametrosPagina, usuario: Usuario
+) -> Pagina[VentaResumen]:
+    """Todas las ventas, paginadas, para el personal (VENDEDOR o ADMIN).
+
+    Mientras no esté ``requiere_rol`` (R2), el rol se controla acá con los roles
+    vigentes en la base (RN-04): 403 si quien pide no es personal.
+    """
+    async with uow:
+        if not await _es_personal(uow, usuario):
+            raise SinPermiso(_LISTADO_SIN_PERMISO)
+        ventas, total = await uow.ventas.listar_pagina(params)
+        return Pagina.armar([VentaResumen.desde_modelo(v) for v in ventas], total, params)
+
+
+async def listar_mis_ventas(
+    uow: VentaUnitOfWork, params: ParametrosPagina, usuario: Usuario
+) -> Pagina[VentaResumen]:
+    """Las ventas del cliente asociado al usuario, paginadas (RN-14).
+
+    Sólo pide estar autenticado. Un usuario sin ficha de cliente (por ejemplo,
+    del personal) recibe una página vacía.
+    """
+    async with uow:
+        ventas, total = await uow.ventas.listar_pagina(params, usuario_id=usuario.id)
+        return Pagina.armar([VentaResumen.desde_modelo(v) for v in ventas], total, params)
 
 
 # ---------- Alta ----------
 
 
-async def crear_venta(uow: VentaUnitOfWork, datos: VentaCreate) -> VentaRead:
-    # RN-06: el precio se copia del libro, así que hay que leerlo de la base.
-    # Esta consulta es necesaria para obtener el precio; de paso detecta los
-    # libros que no existen (C-05).
+_MOTIVO_VENTA = "Venta"
+
+
+async def crear_venta(uow: VentaUnitOfWork, datos: VentaCreate, usuario_id: int) -> VentaRead:
+    """Registra la venta, descuenta el stock y anota un movimiento por renglón (RN-10).
+
+    Todo va en un solo bloque del Unit of Work: la venta, sus renglones, el
+    descuento de cada libro y sus movimientos quedan juntos o no queda nada. Si
+    un libro no alcanza, no existe o está dado de baja, o el cliente no existe,
+    responde 409 y el bloque revierte también los descuentos ya hechos (C-11, C-12).
+    El stock se escribe sólo con ``mover_stock``, el punto único de RN-11.
+    ``usuario_id`` es quien registra la venta y queda en cada movimiento.
+    """
     # RN-12: mensaje propio, nunca el texto de la base. Los libros se validan
     # adentro del bloque, así que una FK rechazada sólo puede ser la del cliente.
-    # La lectura de precios, el 409 por libro inexistente y el alta de la venta
-    # con sus renglones van en un solo bloque: o queda todo o nada.
     async with uow.con_mensajes(
         fk="El cliente indicado no existe",
         unique="Un mismo libro no puede aparecer en dos renglones",
         check="La venta no cumple las reglas de la librería",
     ):
+        # Los libros se bloquean hasta el commit: dos ventas simultáneas del mismo
+        # libro no pueden descontar las dos el mismo stock.
         ids_libros = [r.libro_id for r in datos.renglones]
-        precios = await uow.libros.precios(ids_libros)
+        libros = {libro.id: libro for libro in await uow.libros.obtener_para_vender(ids_libros)}
 
-        faltantes = [i for i in ids_libros if i not in precios]
+        faltantes = [i for i in ids_libros if i not in libros]
         if faltantes:
             raise Conflicto(f"No existe el libro con id {', '.join(map(str, faltantes))}")
 
         # El cliente no se consulta antes: si no existe, la base rechaza la clave
-        # foránea y se traduce a 409 (C-05).
+        # foránea en el flush de add y se traduce a 409 (C-12).
         venta = Venta(cliente_id=datos.cliente_id, total=Decimal("0.00"))
 
         # RN-04: composición. Los renglones se crean con la venta y se agregan a
-        # venta.renglones; se insertan en el mismo commit.
+        # venta.renglones. RN-06: el precio se copia del libro.
         for r in datos.renglones:
             venta.renglones.append(
                 RenglonVenta(
                     libro_id=r.libro_id,
                     cantidad=r.cantidad,
-                    precio_unitario=precios[r.libro_id],
+                    precio_unitario=libros[r.libro_id].precio,
                 )
             )
 
         # RN-07: el total lo calcula el servidor.
         venta.total = sum((r.cantidad * r.precio_unitario for r in venta.renglones), Decimal("0.00"))
 
-        uow.ventas.agregar(venta)
+        # add hace flush: la venta ya tiene id para que los movimientos la referencien.
+        await uow.ventas.add(venta)
+
+        # RN-10: un movimiento de salida por renglón. mover_stock rechaza con 409 el
+        # libro dado de baja y el que no alcanza; el bloque revierte todo lo anterior.
+        for renglon in venta.renglones:
+            await uow.libros.mover_stock(
+                libros[renglon.libro_id], -renglon.cantidad, _MOTIVO_VENTA, usuario_id, venta.id
+            )
 
     # la lectura va después de cerrar el bloque de escritura (no se anidan)
     return await obtener_venta(uow, venta.id)
