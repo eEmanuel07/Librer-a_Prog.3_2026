@@ -29,30 +29,32 @@ class LibroCreate(SQLModel):
 
     isbn: str = Field(min_length=1)
     titulo: str = Field(min_length=1)
-    precio: Decimal = Field(gt=0, max_digits=10, decimal_places=2)  # RN-03
-    stock: int = Field(ge=0)  # RN-03
+    precio: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
+    # RN-11: viaja stock_inicial, no stock. El alta lo convierte en el movimiento
+    # «Stock inicial»; mandar stock da 422 por extra="forbid".
+    stock_inicial: int = Field(ge=0)
     editorial_id: int
     genero_id: int | None = None  # agregación opcional: un libro puede no tener género
     autores: list[AutoriaCreate]
 
 
 class LibroUpdate(SQLModel):
-    """PATCH: se aplican sólo los campos enviados (exclude_unset)."""
+    """PATCH: sólo título y precio, y se aplican sólo los campos enviados (exclude_unset).
+
+    RN-11: el stock no se edita por PATCH, sólo con movimientos. Mandarlo, o
+    cualquier otro campo, da 422 por extra="forbid".
+    """
 
     model_config = ConfigDict(extra="forbid")
 
-    isbn: str | None = Field(default=None, min_length=1)
     titulo: str | None = Field(default=None, min_length=1)
     precio: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
-    stock: int | None = Field(default=None, ge=0)
-    editorial_id: int | None = None
-    genero_id: int | None = None  # null quita el género (es opcional)
 
     @model_validator(mode="after")
     def sin_nulos_explicitos(self) -> "LibroUpdate":
-        # Todas las columnas son obligatorias salvo genero_id: omitir el campo
-        # está bien, mandarlo en null no (la base lo rechazaría con un error opaco).
-        for campo in self.model_fields_set - {"genero_id"}:
+        # Las dos columnas son obligatorias: omitir el campo está bien, mandarlo
+        # en null no (la base lo rechazaría con un error opaco).
+        for campo in self.model_fields_set:
             if getattr(self, campo) is None:
                 raise ValueError(f"'{campo}' no puede ser null")
         return self
