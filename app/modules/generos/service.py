@@ -1,4 +1,5 @@
 from app.core.errors import NoEncontrado
+from app.core.paginacion import Pagina, ParametrosPagina
 from app.modules.generos.models import Genero
 from app.modules.generos.schemas import GeneroCreate, GeneroRead, LibroDeGenero
 from app.modules.generos.unit_of_work import GeneroUnitOfWork
@@ -15,17 +16,27 @@ async def crear_genero(uow: GeneroUnitOfWork, datos: GeneroCreate) -> GeneroRead
     return GeneroRead.model_validate(genero, from_attributes=True)
 
 
-async def listar_generos(uow: GeneroUnitOfWork, limit: int, offset: int) -> list[GeneroRead]:
+async def listar_generos(
+    uow: GeneroUnitOfWork, params: ParametrosPagina
+) -> Pagina[GeneroRead]:
     async with uow:
-        generos = await uow.generos.listar(limit, offset)
-        return [GeneroRead.model_validate(g, from_attributes=True) for g in generos]
+        generos, total = await uow.generos.listar_pagina(params)
+        return Pagina.armar(
+            [GeneroRead.model_validate(g, from_attributes=True) for g in generos],
+            total,
+            params,
+        )
 
 
 async def listar_libros_de_genero(
-    uow: GeneroUnitOfWork, genero_id: int, limit: int, offset: int
-) -> list[LibroDeGenero]:
+    uow: GeneroUnitOfWork, genero_id: int, params: ParametrosPagina
+) -> Pagina[LibroDeGenero]:
     async with uow:
         if await uow.generos.obtener(genero_id) is None:
             raise NoEncontrado(_DETALLE_NO_EXISTE)
-        libros = await uow.generos.listar_libros(genero_id, limit, offset)
-        return [LibroDeGenero.model_validate(libro, from_attributes=True) for libro in libros]
+        libros, total = await uow.generos.listar_libros_pagina(genero_id, params)
+        return Pagina.armar(
+            [LibroDeGenero.model_validate(libro, from_attributes=True) for libro in libros],
+            total,
+            params,
+        )

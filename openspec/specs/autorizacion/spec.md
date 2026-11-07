@@ -49,3 +49,62 @@ El sistema SHALL proveer `DELETE /usuarios/{usuario_id}/roles/{rol}` y `GET /usu
 #### Scenario: Administrador intenta revocarse su propio rol ADMIN y recibe 409 (C-08 / RN-05)
 - **WHEN** un administrador autenticado envía `DELETE /usuarios/{su_propio_id}/roles/ADMIN`
 - **THEN** el sistema responde HTTP 409 Conflict y el rol continúa vigente
+
+### Requirement: Alta de personal con contraseña provisoria y evento de seguridad en la misma transacción (RN-16)
+El sistema SHALL proveer el endpoint `POST /usuarios` (exclusivo para usuarios con rol `ADMIN` vigente) que cree una cuenta de personal con `activo = True` y `debe_cambiar_password = True`, calculando el hash bcrypt antes de abrir la transacción y registrando en el mismo bloque del Unit of Work una fila en `evento_seguridad` con el correo del administrador como `actor`, devolviendo HTTP 201 sin incluir `password_hash`.
+
+#### Scenario: Administrador da de alta a un integrante del personal
+- **WHEN** un administrador autenticado envía `POST /usuarios` con `nombre`, `email` y `password` válidos (hasta 72 bytes UTF-8)
+- **THEN** el sistema crea el usuario con `debe_cambiar_password = True`, registra el evento en `evento_seguridad` en la misma transacción y responde HTTP 201 con los datos del usuario sin `password_hash`
+
+#### Scenario: Alta de personal con correo duplicado responde 409 y no deja evento de seguridad (RN-01, RN-16)
+- **WHEN** un administrador envía `POST /usuarios` con un `email` que ya pertenece a otro usuario
+- **THEN** el sistema revierte la transacción, no deja registro en `evento_seguridad` y responde HTTP 409 Conflict con mensaje propio
+
+#### Scenario: Usuario sin rol ADMIN recibe 403 al intentar dar de alta personal (C-06)
+- **WHEN** un usuario autenticado sin rol `ADMIN` vigente envía `POST /usuarios`
+- **THEN** el sistema responde HTTP 403 Forbidden
+
+### Requirement: Consulta paginada del historial de seguridad (RN-16)
+El sistema SHALL proveer el endpoint `GET /eventos` (exclusivo para usuarios con rol `ADMIN` vigente) que devuelva las filas de `evento_seguridad` dentro del envoltorio de paginación `{items, total, page, size, pages}`, respondiendo HTTP 422 si se solicita una página inexistente y HTTP 403 si el usuario no posee el rol `ADMIN`.
+
+#### Scenario: Administrador consulta el historial de seguridad paginado
+- **WHEN** un administrador autenticado envía `GET /eventos?page=1&size=20`
+- **THEN** el sistema responde HTTP 200 con `{items, total, page, size, pages}` listando las altas de personal, asignaciones/revocaciones de rol, cambios de contraseña y eventos del sistema
+
+#### Scenario: Página más allá de la última en GET /eventos responde 422
+- **WHEN** un administrador solicita una página mayor a `pages` en `GET /eventos`
+- **THEN** el sistema responde HTTP 422 Unprocessable Entity
+
+#### Scenario: Usuario sin rol ADMIN recibe 403 en GET /eventos
+- **WHEN** un usuario autenticado sin rol `ADMIN` vigente envía `GET /eventos`
+- **THEN** el sistema responde HTTP 403 Forbidden
+
+### Requirement: Protección RBAC y paginación con envoltorio en editoriales, géneros y autores
+El sistema SHALL exigir el rol `ADMIN` vigente (`Depends(requiere_rol("ADMIN"))`) en todas las operaciones de escritura (`POST` y `PATCH`) de `editoriales`, `generos` y `autores`, mantener públicas sus lecturas (`GET`), devolver todos sus listados con el envoltorio `{items, total, page, size, pages}` de `app/core/paginacion.py`, y excluir los libros dados de baja (`borrado_en IS NOT NULL`, RN-13) de los listados `/{id}/libros`.
+
+#### Scenario: Vendedor intenta crear o modificar editorial, género o autor y recibe 403 (C-06)
+- **WHEN** un usuario autenticado con rol `VENDEDOR` (sin rol `ADMIN` vigente) envía `POST` o `PATCH` a `/editoriales`, `/generos` o `/autores`
+- **THEN** el sistema responde HTTP 403 Forbidden sin realizar cambios
+
+#### Scenario: Visitante sin sesión consulta listados del catálogo y recibe el envoltorio de paginación
+- **WHEN** un visitante sin sesión envía `GET /editoriales`, `GET /generos` o `GET /editoriales/{id}/libros`, `GET /generos/{id}/libros`, `GET /autores/{id}/libros`
+- **THEN** el sistema responde HTTP 200 con `{items, total, page, size, pages}` excluyendo los libros dados de baja
+
+### Requirement: Dos grupos de rutas en main.py y bloqueo por cambio obligatorio de contraseña (RN-06, RN-14)
+El sistema SHALL organizar las rutas en `app/main.py` en dos grupos (`grupo_abierto` y `grupo_protegido`), montando una sola vez en `grupo_protegido` la dependencia `verificar_cambio_password_pendiente` (`app/core/dependencies.py`) que responda HTTP 403 Forbidden cuando `usuario.debe_cambiar_password` sea verdadero, permitiendo únicamente el uso de `/auth` y de las rutas sin sesión hasta que el usuario actualice su contraseña.
+
+#### Scenario: Usuario con cambio obligatorio de contraseña recibe 403 en rutas protegidas y 200 tras cambiarla (C-09)
+- **WHEN** un usuario con `debe_cambiar_password = True` inicia sesión e intenta acceder a cualquier ruta del `grupo_protegido`
+- **THEN** el sistema responde HTTP 403 Forbidden; al enviar `POST /auth/cambiar-password` (en `grupo_abierto`) responde HTTP 200 y, en la petición siguiente con la misma sesión, accede con HTTP 200 a las rutas permitidas del `grupo_protegido`
+
+#### Scenario: Rutas propias solo requieren estar autenticado sin cambio pendiente (RN-14)
+- **WHEN** un usuario autenticado con `debe_cambiar_password = False` (incluso con rol `CLIENTE`) consulta `GET /mis-ventas`
+- **THEN** el sistema permite el acceso (HTTP 200) dentro del `grupo_protegido`
+
+### Requirement: Casos de prueba ejecutables de autorización y seguridad (C-06 a C-09)
+El sistema SHALL incluir el archivo `test/seguridad.http` con los casos C-06 (401 sin sesión contra 403 por rol insuficiente y acceso a lo propio), C-07 (revocación de rol con sesión abierta que corta el permiso en la petición siguiente), C-08 (autoprotección del rol `ADMIN` y validación de `vence_en`) y C-09 (cambio obligatorio de contraseña en el grupo protegido y habilitación tras cambiarla), ejecutables tras `python seed.py` utilizando `# @name` y `# @no-cookie-jar`.
+
+#### Scenario: Ejecución de C-06 a C-09 con múltiples sesiones en REST Client
+- **WHEN** se ejecuta `test/seguridad.http` después de `python seed.py`
+- **THEN** cada petición documenta su código HTTP esperado (401, 403, 409, 422, 200, 201) y utiliza `# @no-cookie-jar` con `Cookie: {{loginX.response.headers.Set-Cookie}}` para aislar las sesiones de cada actor

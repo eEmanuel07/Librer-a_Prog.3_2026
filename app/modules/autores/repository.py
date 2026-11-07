@@ -4,8 +4,9 @@ from sqlalchemy.orm import joinedload
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.paginacion import ParametrosPagina, paginar
 from app.modules.autores.models import Autor
-from app.modules.libros.models import LibroAutor
+from app.modules.libros.models import Libro, LibroAutor
 
 
 class AutorRepository:
@@ -25,10 +26,23 @@ class AutorRepository:
         # joinedload trae el libro en la misma consulta (sin N+1)
         consulta = (
             select(LibroAutor)
-            .where(LibroAutor.autor_id == autor_id)
+            .join(Libro, Libro.id == LibroAutor.libro_id)
+            .where(LibroAutor.autor_id == autor_id, Libro.borrado_en.is_(None))
             .options(joinedload(LibroAutor.libro))
             .order_by(LibroAutor.libro_id)
             .limit(limit)
             .offset(offset)
         )
         return (await self.session.exec(consulta)).all()
+
+    async def listar_autorias_pagina(
+        self, autor_id: int, params: ParametrosPagina
+    ) -> tuple[Sequence[LibroAutor], int]:
+        consulta = (
+            select(LibroAutor)
+            .join(Libro, Libro.id == LibroAutor.libro_id)
+            .where(LibroAutor.autor_id == autor_id, Libro.borrado_en.is_(None))
+            .options(joinedload(LibroAutor.libro))
+            .order_by(LibroAutor.libro_id)
+        )
+        return await paginar(self.session, consulta, params)
