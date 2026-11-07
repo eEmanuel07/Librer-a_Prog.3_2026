@@ -36,7 +36,8 @@
 
 | `e4-libros-alta-patch-baja` | E4 | Elías | [#86](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/86) | Mergeado y archivado | `openspec/specs/catalogo-libros` |
 | `r2-requiere-rol` | R2 | Bruno | [#93](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/93) | En revisión (archivado en su rama) | `openspec/specs/autorizacion` |
-| `r5-roles-con-vigencia` | R5 | Bruno | por abrir | En revisión (archivado en su rama) | `openspec/specs/autorizacion` |
+| `r5-roles-con-vigencia` | R5 | Bruno | [#94](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/94) | Mergeado y archivado | `openspec/specs/autorizacion` |
+| `r7-proteger-catalogo` | R7 | Bruno | por abrir | En revisión (archivado en su rama) | `openspec/specs/autorizacion` |
 
 La fundación de Active Stack (`knowledge-base/`, `CHANGES.md`, `AGENTS.md`, `CLAUDE.md`) quedó mergeada en [#78](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/78). Las demás tareas `[x]` (incluida E6 en [#79](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/79)) no tienen change en `openspec/`.
 
@@ -336,7 +337,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `04_modelo_de_datos.md` §evento_seguridad · `06_funcionalidades.md` §Ej. 3
 
 ### [R7] `proteger-catalogo` · #51
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama)
 - **Scope**: altas y PATCH de editoriales, géneros y autores sólo para ADMIN; listados con el envoltorio
 - **Dependencias**: R2, B5
 - **Governance**: MEDIO
