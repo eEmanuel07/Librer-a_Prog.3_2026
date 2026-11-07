@@ -1,0 +1,241 @@
+@host = http://localhost:8000
+@contentType = application/json
+
+# ==============================================================================
+# CASOS DE PRUEBA MÍNIMOS: AUTENTICACIÓN (C-01 a C-05) - Consigna págs. 21-23
+# Antes de ejecutar este archivo, asegurarse de tener la app corriendo en localhost:8000
+# y la base de datos al día con alembic upgrade head.
+# ==============================================================================
+
+### C-01 · Entrada mal formada / Contrato estricto
+# Un campo con formato inválido debe responder 422 (Unprocessable Entity)
+# y NUNCA provocar un 500 ni exponer detalles internos de la base de datos.
+POST {{host}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "no-es-un-email-valido",
+  "password": "Password123!"
+}
+
+
+### C-01 (b) · Contraseña mayor a 72 bytes UTF-8 en login
+# PasswordBcrypt rechaza contraseñas > 72 bytes para evitar truncamiento silencioso en bcrypt.
+# Esperado: 422 Unprocessable Entity
+POST {{host}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "admin@libreria.local",
+  "password": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+}
+
+
+### C-01 (c) · Campos extra prohibidos (extra="forbid")
+# Esperado: 422 Unprocessable Entity
+POST {{host}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "admin@libreria.local",
+  "password": "Password123!",
+  "campo_extra": "no_permitido"
+}
+
+
+# ==============================================================================
+# C-02 · Auto-registro de clientes (POST /auth/registro)
+# ==============================================================================
+
+### C-02 (a) · Auto-registro exitoso de nuevo cliente
+# En un solo bloque del Unit of Work crea el Usuario, rol CLIENTE y Perfil de Cliente.
+# Esperado: 201 Created con el usuario creado (sin devolver contraseña ni hash)
+# @name registro_nuevo
+POST {{host}}/auth/registro
+Content-Type: {{contentType}}
+
+{
+  "nombre": "Mariana Gómez",
+  "email": "mariana.gomez@example.com",
+  "password": "PasswordSegura123!"
+}
+
+
+### C-02 (b) · Correo duplicado en registro (intento repetido)
+# El correo mariana.gomez@example.com ya fue registrado en el paso anterior.
+# Esperado: 409 Conflict ("El correo electrónico ya está registrado"), sin duplicar filas
+POST {{host}}/auth/registro
+Content-Type: {{contentType}}
+
+{
+  "nombre": "Mariana Gómez Duplicada",
+  "email": "mariana.gomez@example.com",
+  "password": "OtraPassword123!"
+}
+
+
+### C-02 (c) · Prevención de apropiación de ficha de cliente existente
+# Si un cliente ya existe en el sistema sin usuario vinculado, otro no puede apropiarse de su email.
+# Esperado: 409 Conflict con mensaje propio
+POST {{host}}/auth/registro
+Content-Type: {{contentType}}
+
+{
+  "nombre": "Intento Apropiación",
+  "email": "tomas@example.com",
+  "password": "Password123!"
+}
+
+
+# ==============================================================================
+# C-03 · Login exitoso con emisión de cookie HttpOnly (POST /auth/login)
+# ==============================================================================
+
+### C-03 · Login con credenciales válidas
+# Verifica credenciales contra bcrypt.
+# Esperado: 200 OK con JSON {"mensaje": "Sesión iniciada", "debe_cambiar_password": ...}
+# Cabecera Set-Cookie: access_token=<JWT>; HttpOnly; SameSite=lax; Path=/
+# El cuerpo de la respuesta NO incluye el token.
+# @name login_exitoso
+POST {{host}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "mariana.gomez@example.com",
+  "password": "PasswordSegura123!"
+}
+
+
+# ==============================================================================
+# C-04 · Prevención de enumeración de cuentas
+# ==============================================================================
+
+### C-04 (a) · Login con contraseña incorrecta (correo existente)
+# Verifica la contraseña con bcrypt y falla.
+# Esperado: 401 Unauthorized con {"detail": "Credenciales inválidas"}
+POST {{host}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "mariana.gomez@example.com",
+  "password": "PasswordErronea999!"
+}
+
+
+### C-04 (b) · Login con correo inexistente
+# Compara contra un hash ficticio precomputado en lifespan para igualar el tiempo de cómputo bcrypt.
+# Esperado: exactamente el mismo 401 Unauthorized con {"detail": "Credenciales inválidas"}
+POST {{host}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "cuenta_completamente_inexistente@example.com",
+  "password": "PasswordErronea999!"
+}
+
+
+# ==============================================================================
+# C-05 · Límite de tasa de intentos fallidos (RN-07: 5 fallos en 60s por correo e IP)
+# ==============================================================================
+
+### C-05 · Fallo 1 de 5
+# Esperado: 401 Unauthorized
+POST {{host}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "bloqueo_rate_limit@example.com",
+  "password": "ClaveMala1"
+}
+
+
+### C-05 · Fallo 2 de 5
+# Esperado: 401 Unauthorized
+POST {{host}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "bloqueo_rate_limit@example.com",
+  "password": "ClaveMala2"
+}
+
+
+### C-05 · Fallo 3 de 5
+# Esperado: 401 Unauthorized
+POST {{host}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "bloqueo_rate_limit@example.com",
+  "password": "ClaveMala3"
+}
+
+
+### C-05 · Fallo 4 de 5
+# Esperado: 401 Unauthorized
+POST {{host}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "bloqueo_rate_limit@example.com",
+  "password": "ClaveMala4"
+}
+
+
+### C-05 · Fallo 5 de 5
+# Esperado: 401 Unauthorized (5to intento registrado)
+POST {{host}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "bloqueo_rate_limit@example.com",
+  "password": "ClaveMala5"
+}
+
+
+### C-05 · 6to intento: Debe responder 429 Too Many Requests
+# Sin calcular hash bcrypt ni tocar la contraseña.
+# Esperado: 429 Too Many Requests con cabecera Retry-After: 60
+POST {{host}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "bloqueo_rate_limit@example.com",
+  "password": "CualquierClave"
+}
+
+
+# ==============================================================================
+# CICLO DE SESIÓN Y SEGURIDAD (H6: /auth/yo, /auth/cambiar-password, /auth/logout)
+# ==============================================================================
+
+### Obtener datos de la sesión actual (GET /auth/yo)
+# Requiere cookie access_token obtenida en login previo.
+# Devuelve perfil y contrasta roles vigentes en base de datos vs roles en token.
+# Esperado: 200 OK con { "id": ..., "email": ..., "roles": [...], "roles_token": [...] }
+GET {{host}}/auth/yo
+
+
+### Cambiar contraseña con auditoría (POST /auth/cambiar-password)
+# Valida contraseña actual, actualiza password_hash, desactiva debe_cambiar_password
+# e inserta fila inmutable en evento_seguridad ("Cambio de contraseña") en un único bloque atómico.
+# Esperado: 200 OK con {"mensaje": "Contraseña actualizada exitosamente"}
+POST {{host}}/auth/cambiar-password
+Content-Type: {{contentType}}
+
+{
+  "password_actual": "PasswordSegura123!",
+  "password_nueva": "NuevaPasswordSegura456!"
+}
+
+
+### Cerrar sesión (POST /auth/logout)
+# Elimina la cookie HttpOnly de sesión (Set-Cookie: access_token=""; Max-Age=0) de forma idempotente.
+# Esperado: 200 OK con {"mensaje": "Sesión cerrada"}
+POST {{host}}/auth/logout
+
+
+### Verificar que la sesión quedó cerrada
+# Tras el logout, el acceso a rutas protegidas debe ser rechazado.
+# Esperado: 401 Unauthorized
+GET {{host}}/auth/yo
