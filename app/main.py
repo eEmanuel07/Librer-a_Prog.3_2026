@@ -14,7 +14,7 @@ from app.modules.generos.router import router as generos_router
 from app.modules.health.router import router as health_router
 from app.modules.libros.router import router as libros_router
 from app.modules.usuarios.router import router as auth_router
-from app.modules.usuarios.router import router_usuarios
+from app.modules.usuarios.router import router_eventos, router_usuarios
 from app.modules.ventas.router import router as ventas_router
 from app.modules.ventas.router import router_mis_ventas
 
@@ -56,6 +56,7 @@ async def pagina_inexistente(request: Request, error: PaginaInexistente) -> JSON
 app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(router_usuarios)
+app.include_router(router_eventos)
 app.include_router(editoriales_router)
 app.include_router(generos_router)
 app.include_router(autores_router)

@@ -1,4 +1,4 @@
-"""Rutas HTTP para el módulo usuarios (autenticación, cuentas y roles)."""
+"""Rutas HTTP para el módulo usuarios (autenticación, cuentas, roles y eventos)."""
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -7,13 +7,16 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.config import Settings, get_settings
 from app.core.dependencies import get_usuario_actual, requiere_rol
 from app.core.errors import Conflicto, NoEncontrado
+from app.core.paginacion import Pagina, ParametrosPagina, parametros_pagina
 from app.core.security import calcular_hash_ficticio
 from app.modules.usuarios.models import Usuario
 from app.modules.usuarios.schemas import (
     AsignacionRolRead,
     AsignarRolRequest,
     CambioPasswordRequest,
+    CrearPersonalRequest,
     CredencialesInvalidasError,
+    EventoSeguridadRead,
     LimiteIntentosError,
     LoginRequest,
     LoginResponse,
@@ -21,11 +24,14 @@ from app.modules.usuarios.schemas import (
     RegistroRequest,
     RegistroResponse,
     RolNombre,
+    UsuarioRead,
     YoResponse,
 )
 from app.modules.usuarios.service import (
     asignar_rol as service_asignar_rol,
     cambiar_password as service_cambiar_password,
+    crear_personal as service_crear_personal,
+    listar_eventos as service_listar_eventos,
     listar_roles_usuario as service_listar_roles_usuario,
     login as service_login,
     obtener_yo as service_obtener_yo,
@@ -36,6 +42,7 @@ from app.modules.usuarios.unit_of_work import UsuarioUnitOfWork, get_usuario_uow
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 router_usuarios = APIRouter(prefix="/usuarios", tags=["usuarios"])
+router_eventos = APIRouter(prefix="/eventos", tags=["eventos"])
 
 
 def _obtener_ip_cliente(request: Request) -> str:
@@ -161,7 +168,30 @@ async def cambiar_password_endpoint(
         ) from exc
 
 
-# --- Rutas de Roles con Vigencia (Ej. 5 / [R5]) ---
+# --- Rutas de Alta de Personal y Roles con Vigencia (Ej. 5 / [R4], [R5]) ---
+
+
+@router_usuarios.post(
+    "",
+    response_model=UsuarioRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def crear_personal_endpoint(
+    datos: CrearPersonalRequest,
+    actor: Usuario = Depends(requiere_rol("ADMIN")),
+    uow: UsuarioUnitOfWork = Depends(get_usuario_uow),
+    settings: Settings = Depends(get_settings),
+) -> UsuarioRead:
+    """Crea una cuenta de personal con contraseña provisoria (solo ADMIN, RN-16)."""
+    try:
+        return await service_crear_personal(
+            uow=uow,
+            datos=datos,
+            actor=actor,
+            settings=settings,
+        )
+    except Conflicto as error:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=error.mensaje) from None
 
 
 @router_usuarios.post(
@@ -227,3 +257,19 @@ async def revocar_rol_endpoint(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error.mensaje) from None
     except Conflicto as error:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=error.mensaje) from None
+
+
+# --- Rutas de Historial de Seguridad (Ej. 5 / [R6]) ---
+
+
+@router_eventos.get(
+    "",
+    response_model=Pagina[EventoSeguridadRead],
+)
+async def listar_eventos_endpoint(
+    params: ParametrosPagina = Depends(parametros_pagina),
+    _actor: Usuario = Depends(requiere_rol("ADMIN")),
+    uow: UsuarioUnitOfWork = Depends(get_usuario_uow),
+) -> Pagina[EventoSeguridadRead]:
+    """Lista los eventos de seguridad paginados con el envoltorio Pagina (solo ADMIN)."""
+    return await service_listar_eventos(uow=uow, params=params)
