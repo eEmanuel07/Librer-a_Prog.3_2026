@@ -28,7 +28,8 @@
 | `b2-lifespan-health` | B2 | Belén | por abrir | En revisión (archivado en su rama) | `openspec/specs/ciclo-de-vida-y-salud` |
 | `h3-auth-registro` | H3 | Hernán | por abrir | En revisión (archivado en su rama) | `openspec/specs/autenticacion` |
 | `h6-auth-logout-yo-cambio` | H6 | Hernán | por abrir | En revisión (archivado en su rama) | `openspec/specs/autenticacion` |
-| `j3-venta-con-stock` | J3 | Joaquín | por abrir | En revisión (archivado en su rama) | `openspec/specs/ventas` |
+| `j3-venta-con-stock` | J3 | Joaquín | [#87](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/87) | Mergeado y archivado | `openspec/specs/ventas` |
+| `j4-aviso-comprobante` | J4 | Joaquín | por abrir | En revisión (archivado en su rama) | `openspec/specs/ventas` |
 
 La fundación de Active Stack (`knowledge-base/`, `CHANGES.md`, `AGENTS.md`, `CLAUDE.md`) quedó mergeada en [#78](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/78). Las demás tareas `[x]` (incluida E6 en [#79](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/79)) no tienen change en `openspec/`.
 
@@ -356,14 +357,14 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `07_flujos_principales.md` §Flujo 5 · `05_reglas_de_negocio.md` RN-11, RN-13
 
 ### [J3] `venta-con-stock` · #56
-- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama; falta `requiere_rol` de R2)
+- **Estado**: `[x]` mergeado (PR #87; falta `requiere_rol` de R2)
 - **Scope**: `POST /ventas` en **un solo** bloque: precios, renglones, descuento por `mover_stock` y un movimiento por renglón (RN-09, RN-10); 409 sin escrituras si falta stock, cliente o libro (C-11, C-12)
 - **Dependencias**: E3, R2, B4 · 🔓 Destraba: J4, J5, J8
 - **Governance**: ALTO
 - **Leer antes**: `07_flujos_principales.md` §Flujo 4 · `05_reglas_de_negocio.md` RN-09, RN-10, RN-11 · `04_modelo_de_datos.md` §Invariante
 
 ### [J4] `aviso-comprobante` · #57
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama)
 - **Scope**: `BackgroundTasks` agendado sólo si la venta se confirmó, visible con el logger de uvicorn
 - **Dependencias**: J3 · 🔓 Destraba: J8
 - **Governance**: BAJO
