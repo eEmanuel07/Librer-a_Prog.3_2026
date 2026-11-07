@@ -29,7 +29,8 @@
 | `h3-auth-registro` | H3 | Hernán | por abrir | En revisión (archivado en su rama) | `openspec/specs/autenticacion` |
 | `h6-auth-logout-yo-cambio` | H6 | Hernán | por abrir | En revisión (archivado en su rama) | `openspec/specs/autenticacion` |
 | `j3-venta-con-stock` | J3 | Joaquín | [#87](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/87) | Mergeado y archivado | `openspec/specs/ventas` |
-| `j4-aviso-comprobante` | J4 | Joaquín | por abrir | En revisión (archivado en su rama) | `openspec/specs/ventas` |
+| `j4-aviso-comprobante` | J4 | Joaquín | [#88](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/88) | En revisión (archivado en su rama) | `openspec/specs/ventas` |
+| `j5-detalle-venta-dueno` | J5 | Joaquín | por abrir | En revisión (archivado en su rama) | `openspec/specs/ventas` |
 
 La fundación de Active Stack (`knowledge-base/`, `CHANGES.md`, `AGENTS.md`, `CLAUDE.md`) quedó mergeada en [#78](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/78). Las demás tareas `[x]` (incluida E6 en [#79](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/79)) no tienen change en `openspec/`.
 
@@ -371,7 +372,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `06_funcionalidades.md` §Ej. 8 · `07_flujos_principales.md` §Flujo 4
 
 ### [J5] `detalle-venta-dueno` · #58
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama)
 - **Scope**: `GET /ventas/{id}` con un número fijo de consultas (aunque el libro esté dado de baja); el servicio decide personal o dueño (403), sin `requiere_rol`
 - **Dependencias**: J3, R1 · 🔓 Destraba: J6, J8
 - **Governance**: ALTO
