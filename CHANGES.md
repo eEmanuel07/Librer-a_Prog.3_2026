@@ -34,6 +34,9 @@
 | `j6-mis-ventas-y-ventas` | J6 | Joaquín | por abrir | En revisión (archivado en su rama) | `openspec/specs/ventas` |
 | `h7-auth-http` | H7 | Hernán | por abrir | En revisión (archivado en su rama) | `test/auth.http` |
 
+| `e4-libros-alta-patch-baja` | E4 | Elías | [#86](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/86) | Mergeado y archivado | `openspec/specs/catalogo-libros` |
+| `r2-requiere-rol` | R2 | Bruno | [#93](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/93) | En revisión (archivado en su rama) | `openspec/specs/autorizacion` |
+| `r5-roles-con-vigencia` | R5 | Bruno | por abrir | En revisión (archivado en su rama) | `openspec/specs/autorizacion` |
 
 La fundación de Active Stack (`knowledge-base/`, `CHANGES.md`, `AGENTS.md`, `CLAUDE.md`) quedó mergeada en [#78](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/78). Las demás tareas `[x]` (incluida E6 en [#79](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/79)) no tienen change en `openspec/`.
 
@@ -57,7 +60,7 @@ E1 + E2 ── E3 punto único de stock [x] ──┐
 H1 ── H5 intento_acceso [x] ── H4 login [x] ── H6
                                          │
 FASE 2 · Funcionalidad (casi todo espera B4 y R2)
-R2 ──┬── E4 alta/PATCH/baja libros ──┐
+R2 ──┬── E4 alta/PATCH/baja libros [x] ┐
      ├── E5 reposición y movimientos ┼── E7 solo_agregado.sql + .http libros [~] (también E6)
      ├── J3 venta con stock (también E3, B4) 🔓 ──┬── J4 aviso
      │                                            └── J5 detalle sin N+1 (también R1) ── J6 /mis-ventas, /ventas
@@ -291,21 +294,21 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `07_flujos_principales.md` §Flujo 3 · `05_reglas_de_negocio.md` RN-01, RN-02 · `06_funcionalidades.md` §Ej. 4
 
 ### [R1] `get-usuario-actual` · #45
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` mergeado (cubierto en PR #85)
 - **Scope**: `app/core/dependencies.py`: `get_usuario_actual` desde la cookie `access_token`, con 401 (sin cookie, token inválido o vencido, usuario inexistente o inactivo); pide `Depends(get_session)` para compartir la sesión del UoW
 - **Dependencias**: B4, H2 · 🔓 **Destraba: R2, R3, J5**
 - **Governance**: CRITICO
 - **Leer antes**: `03_actores_y_roles.md` §Cómo se decide un permiso · `07_flujos_principales.md` §Flujo 1 · `08_arquitectura_propuesta.md` §Estructura
 
 ### [R5] `roles-con-vigencia` · #49
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama)
 - **Scope**: asignar (vencimiento opcional, con zona y en el futuro, si no 422) y revocar sin borrar la fila; reasignar uno vencido; autoprotección (RN-05, 409); evento en el mismo bloque (RN-16)
 - **Dependencias**: H1, B4 · 🔓 Destraba: R2, R6, R9
 - **Governance**: CRITICO
 - **Leer antes**: `05_reglas_de_negocio.md` RN-03, RN-05, RN-16 · `07_flujos_principales.md` §Flujo 6 · `03_actores_y_roles.md`
 
 ### [R2] `requiere-rol` · #46
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama)
 - **Scope**: `requiere_rol` con 403, consultando los roles vigentes en la base en cada petición (RN-04)
 - **Dependencias**: R1, R5 · 🔓 **Destraba: E4, E5, J3, J7, R4, R7**
 - **Governance**: CRITICO
@@ -347,7 +350,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `06_funcionalidades.md` §Ej. 4 · `05_reglas_de_negocio.md` RN-06, RN-16
 
 ### [E4] `libros-alta-patch-baja` · #23
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` mergeado (PR #86); el rol ADMIN se suma con R2
 - **Scope**: `POST /libros` con `stock_inicial` y su movimiento, `PATCH` sólo de título y precio, `DELETE` con borrado lógico (204), ISBN recargable (RN-13), envoltorio en el listado
 - **Dependencias**: E3, R2 · 🔓 Destraba: E7
 - **Governance**: MEDIO

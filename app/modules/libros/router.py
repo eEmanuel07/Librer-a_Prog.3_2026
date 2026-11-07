@@ -4,7 +4,15 @@ from app.core.dependencies import get_usuario_actual
 from app.core.errors import Conflicto, NoEncontrado
 from app.core.paginacion import Pagina, ParametrosPagina, parametros_pagina
 from app.modules.libros import service
-from app.modules.libros.schemas import LibroCreate, LibroRead, LibroResumen, LibroUpdate
+from app.modules.libros.schemas import (
+    LibroCreate,
+    LibroRead,
+    LibroResumen,
+    LibroUpdate,
+    MovimientoRead,
+    ReposicionCreate,
+    ReposicionRead,
+)
 from app.modules.libros.unit_of_work import LibroUnitOfWork, get_libros_uow
 from app.modules.usuarios.models import Usuario
 
@@ -62,6 +70,35 @@ async def actualizar_libro(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error.mensaje) from None
     except Conflicto as error:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=error.mensaje) from None
+
+
+@router.post("/{libro_id}/reponer", response_model=ReposicionRead)
+async def reponer_libro(
+    libro_id: int,
+    datos: ReposicionCreate,
+    usuario: Usuario = Depends(get_usuario_actual),
+    uow: LibroUnitOfWork = Depends(get_libros_uow),
+) -> ReposicionRead:
+    try:
+        return await service.reponer_libro(uow, libro_id, datos, usuario_id=usuario.id)
+    except NoEncontrado as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error.mensaje) from None
+    except Conflicto as error:
+        # RN-13: un libro dado de baja no se repone.
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=error.mensaje) from None
+
+
+@router.get("/{libro_id}/movimientos", response_model=Pagina[MovimientoRead])
+async def listar_movimientos(
+    libro_id: int,
+    params: ParametrosPagina = Depends(parametros_pagina),
+    usuario: Usuario = Depends(get_usuario_actual),
+    uow: LibroUnitOfWork = Depends(get_libros_uow),
+) -> Pagina[MovimientoRead]:
+    try:
+        return await service.listar_movimientos(uow, libro_id, params)
+    except NoEncontrado as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error.mensaje) from None
 
 
 @router.delete("/{libro_id}", status_code=status.HTTP_204_NO_CONTENT)

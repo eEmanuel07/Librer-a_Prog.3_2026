@@ -320,5 +320,104 @@ class TestListadoDeLibros(_BaseLibros):
         self.assertEqual({l["titulo"] for l in r.json()["items"]}, {"Ficciones", "El Aleph"})
 
 
+class TestReposicion(_BaseLibros):
+    """E5 (#24): POST /libros/{id}/reponer."""
+
+    def test_reponer_suma_el_stock_y_deja_el_movimiento(self) -> None:
+        libro = self._crear()  # stock_inicial 4
+
+        r = self.cliente.post(f"/libros/{libro['id']}/reponer", json={"cantidad": 3})
+
+        self.assertEqual(r.status_code, 200, r.text)
+        cuerpo = r.json()
+        self.assertEqual(cuerpo["libro"]["stock"], 7)
+        self.assertEqual(cuerpo["libro"]["id"], libro["id"])
+        self.assertEqual((cuerpo["movimiento"]["cantidad"], cuerpo["movimiento"]["motivo"]), (3, "Reposición"))
+        self.assertEqual(cuerpo["movimiento"]["usuario_id"], self.usuario.id)
+        movimientos = self._movimientos(libro["id"])
+        self.assertEqual(sorted(m.cantidad for m in movimientos), [3, 4])
+        self.assertEqual(self._libros_en_tabla()[0].stock, sum(m.cantidad for m in movimientos))
+
+    def test_cantidad_invalida_da_422_sin_tocar_el_stock(self) -> None:
+        libro = self._crear()
+
+        for cuerpo in ({"cantidad": 0}, {"cantidad": -2}, {"cantidad": 1, "motivo": "venta"}, {}):
+            with self.subTest(cuerpo=cuerpo):
+                r = self.cliente.post(f"/libros/{libro['id']}/reponer", json=cuerpo)
+                self.assertEqual(r.status_code, 422, r.text)
+        self.assertEqual(self._libros_en_tabla()[0].stock, 4)
+        self.assertEqual(len(self._movimientos(libro["id"])), 1)
+
+    def test_reponer_un_libro_dado_de_baja_da_409_sin_movimiento(self) -> None:
+        libro = self._crear()
+        self.cliente.delete(f"/libros/{libro['id']}")
+
+        r = self.cliente.post(f"/libros/{libro['id']}/reponer", json={"cantidad": 3})
+
+        self.assertEqual(r.status_code, 409, r.text)
+        self.assertEqual(r.json()["detail"], "El libro está dado de baja")
+        self.assertEqual(len(self._movimientos(libro["id"])), 1)
+        self.assertEqual(self._libros_en_tabla()[0].stock, 4)
+
+    def test_reponer_un_libro_inexistente_da_404(self) -> None:
+        r = self.cliente.post("/libros/999/reponer", json={"cantidad": 3})
+
+        self.assertEqual(r.status_code, 404, r.text)
+        self.assertEqual(r.json()["detail"], "El libro no existe")  # no el 404 de ruta inexistente
+
+
+class TestMovimientos(_BaseLibros):
+    """E5 (#24): GET /libros/{id}/movimientos."""
+
+    def test_movimientos_en_orden_con_envoltorio(self) -> None:
+        libro = self._crear()
+        self.cliente.post(f"/libros/{libro['id']}/reponer", json={"cantidad": 2})
+        self.cliente.post(f"/libros/{libro['id']}/reponer", json={"cantidad": 5})
+
+        r = self.cliente.get(f"/libros/{libro['id']}/movimientos")
+
+        self.assertEqual(r.status_code, 200, r.text)
+        cuerpo = r.json()
+        self.assertEqual((cuerpo["total"], cuerpo["page"], cuerpo["pages"]), (3, 1, 1))
+        self.assertEqual([(m["motivo"], m["cantidad"]) for m in cuerpo["items"]],
+                         [("Stock inicial", 4), ("Reposición", 2), ("Reposición", 5)])
+
+    def test_paginacion_de_movimientos(self) -> None:
+        libro = self._crear()
+        self.cliente.post(f"/libros/{libro['id']}/reponer", json={"cantidad": 2})
+
+        segunda = self.cliente.get(f"/libros/{libro['id']}/movimientos", params={"size": 1, "page": 2})
+        fuera = self.cliente.get(f"/libros/{libro['id']}/movimientos", params={"size": 1, "page": 3})
+
+        self.assertEqual(segunda.status_code, 200, segunda.text)
+        self.assertEqual([m["cantidad"] for m in segunda.json()["items"]], [2])
+        self.assertEqual(fuera.status_code, 422, fuera.text)
+
+    def test_un_libro_dado_de_baja_sigue_mostrando_sus_movimientos(self) -> None:
+        libro = self._crear()
+        self.cliente.delete(f"/libros/{libro['id']}")
+
+        r = self.cliente.get(f"/libros/{libro['id']}/movimientos")
+
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(r.json()["total"], 1)
+
+    def test_movimientos_de_un_libro_inexistente_da_404(self) -> None:
+        r = self.cliente.get("/libros/999/movimientos")
+
+        self.assertEqual(r.status_code, 404, r.text)
+        self.assertEqual(r.json()["detail"], "El libro no existe")
+
+    def test_sin_sesion_reponer_y_movimientos_dan_401(self) -> None:
+        libro = self._crear()
+        del app.dependency_overrides[get_usuario_actual]
+
+        reponer = self.cliente.post(f"/libros/{libro['id']}/reponer", json={"cantidad": 3})
+        movimientos = self.cliente.get(f"/libros/{libro['id']}/movimientos")
+
+        self.assertEqual((reponer.status_code, movimientos.status_code), (401, 401))
+        self.assertEqual(self._libros_en_tabla()[0].stock, 4)
+
+
 if __name__ == "__main__":
     unittest.main()

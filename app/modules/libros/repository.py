@@ -64,6 +64,22 @@ class LibroRepository(SoftDeleteRepository[Libro]):
             consulta = consulta.where(Libro.titulo.icontains(titulo, autoescape=True))
         return await paginar(self.session, consulta.order_by(Libro.id), params)
 
+    async def listar_movimientos_pagina(
+        self, libro_id: int, params: ParametrosPagina
+    ) -> tuple[Sequence[MovimientoStock], int]:
+        """Una página de los movimientos del libro, del más viejo al más nuevo.
+
+        Incluye los de un libro dado de baja: son su historia y no se borran
+        (RN-12). Sin relaciones, así que son dos consultas fijas (total y página).
+        """
+        consulta = (
+            select(MovimientoStock)
+            .where(MovimientoStock.libro_id == libro_id)
+            # id desempata dos movimientos del mismo instante: la paginación es estable.
+            .order_by(MovimientoStock.cuando, MovimientoStock.id)
+        )
+        return await paginar(self.session, consulta, params)
+
     async def precios(self, libro_ids: list[int]) -> dict[int, Decimal]:
         """Precio de cada libro vigente pedido; los inexistentes o dados de baja no aparecen."""
         filas = await self.session.exec(
