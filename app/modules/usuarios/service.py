@@ -15,12 +15,14 @@ from app.modules.usuarios.schemas import (
     AsignacionRolRead,
     AsignarRolRequest,
     CambioPasswordRequest,
+    CrearPersonalRequest,
     CredencialesInvalidasError,
     LimiteIntentosError,
     LoginRequest,
     MensajeResponse,
     RegistroRequest,
     RegistroResponse,
+    UsuarioRead,
     YoResponse,
 )
 from app.modules.usuarios.unit_of_work import UsuarioUnitOfWork, registrar_intento_acceso
@@ -322,3 +324,42 @@ async def revocar_rol(
         )
 
     return AsignacionRolRead.desde_modelo(abierta, ahora=ahora)
+
+
+# --- Alta de Personal (Ej. 5 / [R4]) ---
+
+
+async def crear_personal(
+    uow: UsuarioUnitOfWork,
+    datos: CrearPersonalRequest,
+    actor: Usuario,
+    settings: Settings,
+) -> UsuarioRead:
+    """Crea una cuenta de personal con contraseña provisoria y anota el evento (RN-16).
+
+    1. Calcula el hash bcrypt antes de abrir la transacción (fuera del pool).
+    2. En un solo bloque del UoW crea el Usuario con debe_cambiar_password=True
+       y la línea correspondiente en evento_seguridad.
+    """
+    password_hash = await hashear_password(datos.password, settings=settings)
+    ahora = datetime.now(timezone.utc)
+
+    async with uow.con_mensajes(unique="El correo electrónico ya está registrado"):
+        usuario = Usuario(
+            nombre=datos.nombre,
+            email=datos.email,
+            password_hash=password_hash,
+            activo=True,
+            debe_cambiar_password=True,
+        )
+        await uow.usuarios.add(usuario)
+
+        await uow.eventos.add(
+            EventoSeguridad(
+                cuando=ahora,
+                actor=actor.email,
+                accion=f"Alta de personal {usuario.email}",
+            )
+        )
+
+    return UsuarioRead.model_validate(usuario)
