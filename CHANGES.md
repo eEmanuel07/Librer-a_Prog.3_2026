@@ -29,6 +29,7 @@
 | `h3-auth-registro` | H3 | Hernán | por abrir | En revisión (archivado en su rama) | `openspec/specs/autenticacion` |
 | `h6-auth-logout-yo-cambio` | H6 | Hernán | por abrir | En revisión (archivado en su rama) | `openspec/specs/autenticacion` |
 | `j3-venta-con-stock` | J3 | Joaquín | por abrir | En revisión (archivado en su rama) | `openspec/specs/ventas` |
+| `h7-auth-http` | H7 | Hernán | por abrir | En progreso (propuesta OPSX lista) | `test/auth.http` |
 
 La fundación de Active Stack (`knowledge-base/`, `CHANGES.md`, `AGENTS.md`, `CLAUDE.md`) quedó mergeada en [#78](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/78). Las demás tareas `[x]` (incluida E6 en [#79](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/79)) no tienen change en `openspec/`.
 
@@ -409,7 +410,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `04_modelo_de_datos.md` §Seed data · `03_actores_y_roles.md` §Usuarios iniciales · `10_preguntas_abiertas.md` IN-01
 
 ### [H7] `auth-http` · #43
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[~]` en progreso (propuesta OPSX lista)
 - **Scope**: `test/auth.http` con C-01 a C-05
 - **Dependencias**: H3, H4, H6, R8
 - **Governance**: BAJO
