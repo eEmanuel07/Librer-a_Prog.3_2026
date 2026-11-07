@@ -35,45 +35,62 @@ async def listar_ventas(uow: VentaUnitOfWork, limit: int, offset: int) -> list[V
 # ---------- Alta ----------
 
 
-async def crear_venta(uow: VentaUnitOfWork, datos: VentaCreate) -> VentaRead:
-    # RN-06: el precio se copia del libro, así que hay que leerlo de la base.
-    # Esta consulta es necesaria para obtener el precio; de paso detecta los
-    # libros que no existen (C-05).
+_MOTIVO_VENTA = "Venta"
+
+
+async def crear_venta(uow: VentaUnitOfWork, datos: VentaCreate, usuario_id: int) -> VentaRead:
+    """Registra la venta, descuenta el stock y anota un movimiento por renglón (RN-10).
+
+    Todo va en un solo bloque del Unit of Work: la venta, sus renglones, el
+    descuento de cada libro y sus movimientos quedan juntos o no queda nada. Si
+    un libro no alcanza, no existe o está dado de baja, o el cliente no existe,
+    responde 409 y el bloque revierte también los descuentos ya hechos (C-11, C-12).
+    El stock se escribe sólo con ``mover_stock``, el punto único de RN-11.
+    ``usuario_id`` es quien registra la venta y queda en cada movimiento.
+    """
     # RN-12: mensaje propio, nunca el texto de la base. Los libros se validan
     # adentro del bloque, así que una FK rechazada sólo puede ser la del cliente.
-    # La lectura de precios, el 409 por libro inexistente y el alta de la venta
-    # con sus renglones van en un solo bloque: o queda todo o nada.
     async with uow.con_mensajes(
         fk="El cliente indicado no existe",
         unique="Un mismo libro no puede aparecer en dos renglones",
         check="La venta no cumple las reglas de la librería",
     ):
+        # Los libros se bloquean hasta el commit: dos ventas simultáneas del mismo
+        # libro no pueden descontar las dos el mismo stock.
         ids_libros = [r.libro_id for r in datos.renglones]
-        precios = await uow.libros.precios(ids_libros)
+        libros = {libro.id: libro for libro in await uow.libros.obtener_para_vender(ids_libros)}
 
-        faltantes = [i for i in ids_libros if i not in precios]
+        faltantes = [i for i in ids_libros if i not in libros]
         if faltantes:
             raise Conflicto(f"No existe el libro con id {', '.join(map(str, faltantes))}")
 
         # El cliente no se consulta antes: si no existe, la base rechaza la clave
-        # foránea y se traduce a 409 (C-05).
+        # foránea en el flush de add y se traduce a 409 (C-12).
         venta = Venta(cliente_id=datos.cliente_id, total=Decimal("0.00"))
 
         # RN-04: composición. Los renglones se crean con la venta y se agregan a
-        # venta.renglones; se insertan en el mismo commit.
+        # venta.renglones. RN-06: el precio se copia del libro.
         for r in datos.renglones:
             venta.renglones.append(
                 RenglonVenta(
                     libro_id=r.libro_id,
                     cantidad=r.cantidad,
-                    precio_unitario=precios[r.libro_id],
+                    precio_unitario=libros[r.libro_id].precio,
                 )
             )
 
         # RN-07: el total lo calcula el servidor.
         venta.total = sum((r.cantidad * r.precio_unitario for r in venta.renglones), Decimal("0.00"))
 
-        uow.ventas.agregar(venta)
+        # add hace flush: la venta ya tiene id para que los movimientos la referencien.
+        await uow.ventas.add(venta)
+
+        # RN-10: un movimiento de salida por renglón. mover_stock rechaza con 409 el
+        # libro dado de baja y el que no alcanza; el bloque revierte todo lo anterior.
+        for renglon in venta.renglones:
+            await uow.libros.mover_stock(
+                libros[renglon.libro_id], -renglon.cantidad, _MOTIVO_VENTA, usuario_id, venta.id
+            )
 
     # la lectura va después de cerrar el bloque de escritura (no se anidan)
     return await obtener_venta(uow, venta.id)
