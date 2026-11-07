@@ -1,13 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from app.core.dependencies import requiere_rol
 from app.core.errors import Conflicto, NoEncontrado
-from app.core.pagination import Paginacion, paginacion
+from app.core.paginacion import Pagina, ParametrosPagina, parametros_pagina
 from app.modules.clientes import service
 from app.modules.clientes.schemas import ClienteCreate, ClienteRead, ClienteUpdate, PerfilCreate, PerfilRead
 from app.modules.clientes.unit_of_work import ClienteUnitOfWork, get_clientes_uow
 from app.modules.ventas.schemas import VentaRead
 
-router = APIRouter(prefix="/clientes", tags=["clientes"])
+# Todo el módulo es del personal (VENDEDOR o ADMIN): sin sesión 401, sin el rol
+# 403. El rol se lee de la base en cada petición (RN-04), no del token.
+router = APIRouter(
+    prefix="/clientes",
+    tags=["clientes"],
+    dependencies=[Depends(requiere_rol("VENDEDOR", "ADMIN"))],
+)
 
 
 @router.post("/", response_model=ClienteRead, status_code=status.HTTP_201_CREATED)
@@ -60,15 +67,13 @@ async def crear_perfil(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=error.mensaje) from None
 
 
-@router.get("/{cliente_id}/ventas", response_model=list[VentaRead])
+@router.get("/{cliente_id}/ventas", response_model=Pagina[VentaRead])
 async def listar_ventas_de_cliente(
     cliente_id: int,
-    pag: Paginacion = Depends(paginacion),
+    params: ParametrosPagina = Depends(parametros_pagina),  # page y size: 422 si no cumplen
     uow: ClienteUnitOfWork = Depends(get_clientes_uow),
-) -> list[VentaRead]:
+) -> Pagina[VentaRead]:
     try:
-        return await service.listar_ventas_de_cliente(
-            uow, cliente_id, limit=pag.limit, offset=pag.offset
-        )
+        return await service.listar_ventas_de_cliente(uow, cliente_id, params)
     except NoEncontrado as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error.mensaje) from None
