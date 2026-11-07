@@ -1,5 +1,6 @@
-"""Tests de los dos grupos de rutas en main.py y cambio obligatorio de contraseña (issue #47, [R3])."""
+"""Tests de los dos grupos de rutas en main.py, cambio obligatorio de contraseña y test/seguridad.http ([R3], [R9])."""
 
+from pathlib import Path
 import unittest
 
 from fastapi.testclient import TestClient
@@ -146,6 +147,29 @@ class TestDosGruposRutasYCambioObligatorio(unittest.IsolatedAsyncioTestCase):
             "/ventas/", cookies={"access_token": self.token_nuevo}
         )
         self.assertEqual(r_desbloqueado_ventas.status_code, 200)
+
+    def test_02_archivo_seguridad_http_incluye_c06_a_c09_y_no_cookie_jar(self):
+        raiz = Path(__file__).resolve().parent.parent
+        archivo = raiz / "test" / "seguridad.http"
+        self.assertTrue(archivo.is_file())
+        contenido = archivo.read_text(encoding="utf-8")
+        for marca in (
+            "C-06",
+            "C-07",
+            "C-08",
+            "C-09",
+            "# @name loginAdmin",
+            "# @name loginVendedor",
+            "# @name loginAna",
+            "# @name loginNuevo",
+            "# @no-cookie-jar",
+            "Cookie: {{loginAdmin.response.headers.Set-Cookie}}",
+            "Cookie: {{loginVendedor.response.headers.Set-Cookie}}",
+            "Cookie: {{loginAna.response.headers.Set-Cookie}}",
+            "Cookie: {{loginNuevo.response.headers.Set-Cookie}}",
+        ):
+            with self.subTest(marca=marca):
+                self.assertIn(marca, contenido)
 
 
 if __name__ == "__main__":

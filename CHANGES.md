@@ -42,6 +42,7 @@
 | `r7-proteger-catalogo` | R7 | Bruno | [#98](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/98) | Mergeado y archivado | `openspec/specs/autorizacion` |
 | `r3-dos-grupos-de-rutas` | R3 | Bruno | [#99](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/99) | Mergeado y archivado | `openspec/specs/autorizacion` |
 | `r8-seed-en-la-raiz` | R8 | Bruno | [#100](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/100) | Mergeado y archivado | `openspec/specs/datos-iniciales` |
+| `r9-seguridad-http` | R9 | Bruno | [#101](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/101) | Mergeado y archivado | `test/seguridad.http` |
 
 La fundación de Active Stack (`knowledge-base/`, `CHANGES.md`, `AGENTS.md`, `CLAUDE.md`) quedó mergeada en [#78](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/78). Las demás tareas `[x]` (incluida E6 en [#79](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/79)) no tienen change en `openspec/`.
 
@@ -429,7 +430,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `06_funcionalidades.md` §Casos
 
 ### [R9] `seguridad-http` · #53
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama)
 - **Scope**: `test/seguridad.http` con C-06 a C-09 (varias sesiones con `# @name` y `# @no-cookie-jar`)
 - **Dependencias**: R2, R3, R5, R8
 - **Governance**: BAJO
