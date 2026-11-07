@@ -41,6 +41,7 @@
 | `r6-eventos-paginado` | R6 | Bruno | [#97](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/97) | Mergeado y archivado | `openspec/specs/autorizacion` |
 | `r7-proteger-catalogo` | R7 | Bruno | [#98](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/98) | Mergeado y archivado | `openspec/specs/autorizacion` |
 | `r3-dos-grupos-de-rutas` | R3 | Bruno | [#99](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/99) | Mergeado y archivado | `openspec/specs/autorizacion` |
+| `r8-seed-en-la-raiz` | R8 | Bruno | [#100](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/100) | Mergeado y archivado | `openspec/specs/datos-iniciales` |
 
 La fundación de Active Stack (`knowledge-base/`, `CHANGES.md`, `AGENTS.md`, `CLAUDE.md`) quedó mergeada en [#78](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/78). Las demás tareas `[x]` (incluida E6 en [#79](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/79)) no tienen change en `openspec/`.
 
@@ -414,7 +415,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 ## FASE 3 — Cierre
 
 ### [R8] `seed-en-la-raiz` · #52
-- **Estado**: `[ ]` pendiente — **disponible ahora**
+- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama)
 - **Scope**: `seed.py` en la raíz con los datos de las págs. 19-20 (usuarios, catálogo, venta 1, movimientos que cumplen el invariante, línea `SISTEMA`); reemplaza a `scripts/seed.py`
 - **Dependencias**: E1, H1, E3 · 🔓 **Destraba: H7, R9, J8**
 - **Governance**: MEDIO
