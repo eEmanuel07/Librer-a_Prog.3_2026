@@ -35,6 +35,7 @@
 | `h7-auth-http` | H7 | Hernán | por abrir | En revisión (archivado en su rama) | `test/auth.http` |
 
 | `e4-libros-alta-patch-baja` | E4 | Elías | [#86](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/86) | Mergeado y archivado | `openspec/specs/catalogo-libros` |
+| `e5-reposicion-y-movimientos` | E5 | Elías | [#92](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/92) | Mergeado y archivado | `openspec/specs/movimientos-stock` |
 | `r2-requiere-rol` | R2 | Bruno | [#93](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/93) | Mergeado y archivado | `openspec/specs/autorizacion` |
 | `r5-roles-con-vigencia` | R5 | Bruno | [#94](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/94) | Mergeado y archivado | `openspec/specs/autorizacion` |
 | `r4-alta-de-personal` | R4 | Bruno | [#96](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/96) | Mergeado y archivado | `openspec/specs/autorizacion` |
@@ -67,7 +68,7 @@ H1 ── H5 intento_acceso [x] ── H4 login [x] ── H6
                                          │
 FASE 2 · Funcionalidad (casi todo espera B4 y R2)
 R2 ──┬── E4 alta/PATCH/baja libros [x] ┐
-     ├── E5 reposición y movimientos ┼── E7 solo_agregado.sql + .http libros [~] (también E6)
+     ├── E5 reposición y movimientos [x] ┼── E7 solo_agregado.sql + .http libros [~] (también E6)
      ├── J3 venta con stock (también E3, B4) 🔓 ──┬── J4 aviso
      │                                            └── J5 detalle sin N+1 (también R1) ── J6 /mis-ventas, /ventas
      ├── J7 clientes con acceso
@@ -363,7 +364,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `07_flujos_principales.md` §Flujo 5 · `05_reglas_de_negocio.md` RN-01, RN-11, RN-13
 
 ### [E5] `reposicion-y-movimientos` · #24
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` mergeado (PR #92); el rol ADMIN se suma con R2
 - **Scope**: `POST /libros/{id}/reponer` (200, con su movimiento; 409 si está dado de baja) y `GET /libros/{id}/movimientos`
 - **Dependencias**: E3, R2 · 🔓 Destraba: E7
 - **Governance**: MEDIO
