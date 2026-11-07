@@ -70,12 +70,15 @@ class AsignacionRol(SQLModel, table=True):
             "rol IN ('ADMIN', 'VENDEDOR', 'CLIENTE')",
             name="ck_asignacion_rol_rol",
         ),
+        # sqlite_where es sólo para los tests (SQLite en memoria): PostgreSQL lo
+        # ignora, así que el esquema real no cambia y no hace falta migración.
         Index(
             "uq_asignacion_rol_vigente",
             "usuario_id",
             "rol",
             unique=True,
             postgresql_where=text("revocada_en IS NULL"),
+            sqlite_where=text("revocada_en IS NULL"),
         ),
     )
 

@@ -1,15 +1,17 @@
-"""Rutas HTTP para el módulo usuarios (autenticación y cuentas)."""
+"""Rutas HTTP para el módulo usuarios (autenticación, cuentas y roles)."""
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import Settings, get_settings
-from app.core.dependencies import get_usuario_actual
-from app.core.errors import Conflicto
+from app.core.dependencies import get_usuario_actual, requiere_rol
+from app.core.errors import Conflicto, NoEncontrado
 from app.core.security import calcular_hash_ficticio
 from app.modules.usuarios.models import Usuario
 from app.modules.usuarios.schemas import (
+    AsignacionRolRead,
+    AsignarRolRequest,
     CambioPasswordRequest,
     CredencialesInvalidasError,
     LimiteIntentosError,
@@ -18,17 +20,22 @@ from app.modules.usuarios.schemas import (
     MensajeResponse,
     RegistroRequest,
     RegistroResponse,
+    RolNombre,
     YoResponse,
 )
 from app.modules.usuarios.service import (
+    asignar_rol as service_asignar_rol,
     cambiar_password as service_cambiar_password,
+    listar_roles_usuario as service_listar_roles_usuario,
     login as service_login,
     obtener_yo as service_obtener_yo,
     registrar as service_registrar,
+    revocar_rol as service_revocar_rol,
 )
 from app.modules.usuarios.unit_of_work import UsuarioUnitOfWork, get_usuario_uow
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+router_usuarios = APIRouter(prefix="/usuarios", tags=["usuarios"])
 
 
 def _obtener_ip_cliente(request: Request) -> str:
@@ -152,3 +159,71 @@ async def cambiar_password_endpoint(
             status_code=401,
             detail=exc.mensaje,
         ) from exc
+
+
+# --- Rutas de Roles con Vigencia (Ej. 5 / [R5]) ---
+
+
+@router_usuarios.post(
+    "/{usuario_id}/roles",
+    response_model=AsignacionRolRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def asignar_rol_endpoint(
+    usuario_id: int,
+    datos: AsignarRolRequest,
+    actor: Usuario = Depends(requiere_rol("ADMIN")),
+    uow: UsuarioUnitOfWork = Depends(get_usuario_uow),
+) -> AsignacionRolRead:
+    """Asigna un rol con vigencia opcional al usuario indicado (solo ADMIN)."""
+    try:
+        return await service_asignar_rol(
+            uow=uow,
+            usuario_id=usuario_id,
+            datos=datos,
+            actor=actor,
+        )
+    except NoEncontrado as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error.mensaje) from None
+    except Conflicto as error:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=error.mensaje) from None
+
+
+@router_usuarios.get(
+    "/{usuario_id}/roles",
+    response_model=list[AsignacionRolRead],
+)
+async def listar_roles_endpoint(
+    usuario_id: int,
+    _actor: Usuario = Depends(requiere_rol("ADMIN")),
+    uow: UsuarioUnitOfWork = Depends(get_usuario_uow),
+) -> list[AsignacionRolRead]:
+    """Lista las asignaciones de rol de un usuario (solo ADMIN)."""
+    try:
+        return await service_listar_roles_usuario(uow=uow, usuario_id=usuario_id)
+    except NoEncontrado as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error.mensaje) from None
+
+
+@router_usuarios.delete(
+    "/{usuario_id}/roles/{rol}",
+    response_model=AsignacionRolRead,
+)
+async def revocar_rol_endpoint(
+    usuario_id: int,
+    rol: RolNombre,
+    actor: Usuario = Depends(requiere_rol("ADMIN")),
+    uow: UsuarioUnitOfWork = Depends(get_usuario_uow),
+) -> AsignacionRolRead:
+    """Revoca el rol vigente escribiendo revocada_en sin borrar la fila (solo ADMIN)."""
+    try:
+        return await service_revocar_rol(
+            uow=uow,
+            usuario_id=usuario_id,
+            rol=rol,
+            actor=actor,
+        )
+    except NoEncontrado as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error.mensaje) from None
+    except Conflicto as error:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=error.mensaje) from None

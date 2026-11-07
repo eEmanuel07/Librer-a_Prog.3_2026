@@ -7,23 +7,37 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import Settings
+from app.core.errors import Conflicto, NoEncontrado
 from app.core.security import crear_access_token, hashear_password, verificar_password
 from app.modules.clientes.models import Cliente
 from app.modules.usuarios.models import AsignacionRol, EventoSeguridad, Usuario
 from app.modules.usuarios.schemas import (
+    AsignacionRolRead,
+    AsignarRolRequest,
+    CambioPasswordRequest,
     CredencialesInvalidasError,
     LimiteIntentosError,
     LoginRequest,
+    MensajeResponse,
     RegistroRequest,
     RegistroResponse,
-    CambioPasswordRequest,
-    MensajeResponse,
     YoResponse,
 )
 from app.modules.usuarios.unit_of_work import UsuarioUnitOfWork, registrar_intento_acceso
 
 MAX_FALLOS = 5
 VENTANA_SEGUNDOS = 60
+
+_DETALLE_USUARIO_NO_EXISTE = "El usuario no existe"
+_DETALLE_ROL_YA_VIGENTE = "El usuario ya tiene una asignación vigente de ese rol"
+
+
+def _normalizar_utc(dt: datetime | None) -> datetime | None:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 async def login(
@@ -201,3 +215,110 @@ async def cambiar_password(
         )
 
     return MensajeResponse(mensaje="Contraseña actualizada exitosamente")
+
+
+# --- Roles con Vigencia (Ej. 5 / [R5]) ---
+
+
+async def asignar_rol(
+    uow: UsuarioUnitOfWork,
+    usuario_id: int,
+    datos: AsignarRolRequest,
+    actor: Usuario,
+) -> AsignacionRolRead:
+    """Asigna un rol con vigencia opcional y registra el evento en el mismo bloque (RN-03, RN-16).
+
+    Si el usuario tenía una asignación abierta pero ya vencida de ese rol, la
+    cierra escribiendo ``revocada_en`` y abre una nueva fila. Si tenía una
+    asignación vigente, responde 409.
+    """
+    ahora = datetime.now(timezone.utc)
+
+    async with uow.con_mensajes(
+        unique=_DETALLE_ROL_YA_VIGENTE,
+        check="El rol indicado no es válido",
+    ):
+        usuario_destino = await uow.usuarios.get_by_id(usuario_id)
+        if usuario_destino is None:
+            raise NoEncontrado(_DETALLE_USUARIO_NO_EXISTE)
+
+        abierta = await uow.asignaciones_rol.obtener_abierta(usuario_id, datos.rol)
+        if abierta is not None:
+            vence_anterior = _normalizar_utc(abierta.vence_en)
+            if vence_anterior is not None and vence_anterior <= ahora:
+                # Reasignar un rol vencido cierra la fila anterior y abre una nueva.
+                await uow.asignaciones_rol.update(abierta, {"revocada_en": ahora})
+            else:
+                raise Conflicto(_DETALLE_ROL_YA_VIGENTE)
+
+        nueva = AsignacionRol(
+            usuario_id=usuario_id,
+            rol=datos.rol,
+            desde=ahora,
+            vence_en=datos.vence_en,
+            otorgada_por=actor.id,
+        )
+        await uow.asignaciones_rol.add(nueva)
+
+        await uow.eventos.add(
+            EventoSeguridad(
+                cuando=ahora,
+                actor=actor.email,
+                accion=f"Asignación de rol {datos.rol} a {usuario_destino.email}",
+            )
+        )
+
+    return AsignacionRolRead.desde_modelo(nueva, ahora=ahora)
+
+
+async def listar_roles_usuario(
+    uow: UsuarioUnitOfWork,
+    usuario_id: int,
+) -> list[AsignacionRolRead]:
+    """Devuelve todas las asignaciones de rol de un usuario (vigentes, vencidas y revocadas)."""
+    ahora = datetime.now(timezone.utc)
+    async with uow:
+        usuario_destino = await uow.usuarios.get_by_id(usuario_id)
+        if usuario_destino is None:
+            raise NoEncontrado(_DETALLE_USUARIO_NO_EXISTE)
+        asignaciones = await uow.asignaciones_rol.listar_de_usuario(usuario_id)
+        return [AsignacionRolRead.desde_modelo(a, ahora=ahora) for a in asignaciones]
+
+
+async def revocar_rol(
+    uow: UsuarioUnitOfWork,
+    usuario_id: int,
+    rol: str,
+    actor: Usuario,
+) -> AsignacionRolRead:
+    """Revoca el rol vigente escribiendo ``revocada_en`` sin borrar la fila (RN-05, RN-16)."""
+    ahora = datetime.now(timezone.utc)
+
+    async with uow:
+        usuario_destino = await uow.usuarios.get_by_id(usuario_id)
+        if usuario_destino is None:
+            raise NoEncontrado(_DETALLE_USUARIO_NO_EXISTE)
+
+        abierta = await uow.asignaciones_rol.obtener_abierta(usuario_id, rol)
+        vence_actual = _normalizar_utc(abierta.vence_en) if abierta is not None else None
+        if abierta is None or (vence_actual is not None and vence_actual <= ahora):
+            raise NoEncontrado("El usuario no tiene ese rol vigente")
+
+        if rol == "ADMIN":
+            if actor.id == usuario_id:
+                raise Conflicto("Un administrador no puede revocarse su propio rol ADMIN")
+            admins_vigentes = await uow.asignaciones_rol.contar_admins_vigentes(ahora)
+            if admins_vigentes <= 1:
+                raise Conflicto("El sistema no puede quedar sin administradores vigentes")
+
+        await uow.asignaciones_rol.update(abierta, {"revocada_en": ahora})
+
+        await uow.eventos.add(
+            EventoSeguridad(
+                cuando=ahora,
+                actor=actor.email,
+                accion=f"Revocación de rol {rol} a {usuario_destino.email}",
+            )
+        )
+
+    return AsignacionRolRead.desde_modelo(abierta, ahora=ahora)
