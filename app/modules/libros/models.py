@@ -53,11 +53,14 @@ class Libro(SQLModel, table=True):
         # El ISBN es único sólo entre los libros vigentes: uno dado de baja
         # (borrado_en con fecha) libera su ISBN para volver a cargarlo. Es un
         # índice único parcial y no un UNIQUE común, que lo bloquearía para siempre.
+        # sqlite_where es sólo para los tests (SQLite en memoria): PostgreSQL lo
+        # ignora, así que el esquema real no cambia y no hace falta migración.
         Index(
             "uq_libro_isbn_vigente",
             "isbn",
             unique=True,
             postgresql_where=text("borrado_en IS NULL"),
+            sqlite_where=text("borrado_en IS NULL"),
         ),
     )
 

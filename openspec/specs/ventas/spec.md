@@ -44,3 +44,93 @@ El sistema SHALL responder 401 a `POST /ventas` sin una cookie de sesión válid
 #### Scenario: Sin sesión
 - **WHEN** se envía `POST /ventas` sin cookie `access_token`
 - **THEN** el sistema responde 401 y no escribe nada
+
+### Requirement: Aviso del comprobante después de confirmar la venta
+El sistema SHALL agendar con `BackgroundTasks`, al registrar una venta, el aviso del comprobante al cliente, simulado con `await asyncio.sleep(0.5)` y una línea en el registro. El aviso MUST correr después de enviar la respuesta, sólo si la venta se confirmó, y MUST verse en la consola con el arranque normal de uvicorn.
+
+#### Scenario: Venta confirmada
+- **WHEN** se registra una venta válida y el sistema responde 201
+- **THEN** después de enviar la respuesta se escribe una sola línea «Comprobante de la venta N enviado a <email> (total $T)» con el logger de uvicorn
+
+#### Scenario: Venta rechazada
+- **WHEN** una venta responde 409 (stock insuficiente, libro o cliente inexistente, libro dado de baja) o 422 (cuerpo inválido)
+- **THEN** no se agenda ni se escribe ningún aviso
+
+#### Scenario: El aviso no bloquea
+- **WHEN** corre el aviso
+- **THEN** espera con `asyncio.sleep(0.5)` (no con una llamada bloqueante) y el servidor sigue atendiendo otras peticiones
+
+### Requirement: Detalle de una venta para el personal o el cliente dueño
+El sistema SHALL responder `GET /ventas/{id}` con el detalle de la venta (cliente, renglones y título de cada libro) al personal (VENDEDOR o ADMIN según los roles vigentes en la base) o al cliente dueño de la venta (RN-14). La ruta MUST NOT usar `requiere_rol`: decide el servicio, primero quién pide y qué relación tiene con la venta, y después qué devuelve.
+
+#### Scenario: Sin sesión
+- **WHEN** se pide `GET /ventas/{id}` sin cookie `access_token`
+- **THEN** el sistema responde 401
+
+#### Scenario: El personal ve cualquier venta
+- **WHEN** un usuario con rol vigente VENDEDOR o ADMIN pide el detalle de una venta existente
+- **THEN** el sistema responde 200 con la venta, su cliente y sus renglones
+
+#### Scenario: La cliente ve su venta y no la ajena (C-06)
+- **WHEN** una usuaria sin rol de personal pide el detalle de una venta de su ficha de cliente, y después el de una venta de otro cliente
+- **THEN** el sistema responde 200 a la suya y 403 «No tenés permiso para ver esta venta» a la ajena
+
+#### Scenario: Rol revocado o vencido
+- **WHEN** un usuario cuyo rol VENDEDOR está revocado o vencido en la base pide una venta que no es suya
+- **THEN** el sistema responde 403, aunque el token todavía nombre ese rol
+
+#### Scenario: Venta inexistente
+- **WHEN** el personal o un cliente piden un id de venta que no existe
+- **THEN** el sistema responde 404 «La venta no existe»
+
+### Requirement: Detalle con un número fijo de consultas
+El sistema SHALL armar el detalle de una venta con una cantidad de consultas que no depende de la cantidad de renglones (C-15), y SHALL mostrar el título de los libros aunque estén dados de baja.
+
+#### Scenario: Dos y cuatro renglones (C-15)
+- **WHEN** el personal pide el detalle de una venta con 2 renglones y el de otra con 4
+- **THEN** las dos peticiones ejecutan la misma cantidad de consultas
+
+#### Scenario: Libro dado de baja
+- **WHEN** se pide el detalle de una venta que tiene un libro dado de baja
+- **THEN** el renglón sigue mostrando su título y la cantidad de consultas no cambia
+
+### Requirement: Listado de todas las ventas para el personal
+El sistema SHALL responder `GET /ventas` sólo al personal (VENDEDOR o ADMIN según los roles vigentes en la base) con el envoltorio `{items, total, page, size, pages}`, ordenado por id, donde cada ítem trae la venta y su cliente.
+
+#### Scenario: Sin sesión
+- **WHEN** se pide `GET /ventas` sin cookie `access_token`
+- **THEN** el sistema responde 401
+
+#### Scenario: Un cliente o un rol revocado
+- **WHEN** lo pide un usuario sin rol vigente de personal
+- **THEN** el sistema responde 403 «No tenés permiso para ver todas las ventas»
+
+#### Scenario: Página de ventas
+- **WHEN** el personal pide `GET /ventas?size=2` y hay 5 ventas
+- **THEN** el sistema responde 200 con 2 ítems, `total` 5, `page` 1, `size` 2 y `pages` 3
+
+#### Scenario: Página de más o tamaño inválido
+- **WHEN** se pide una página más allá de la última, o `size` fuera de 1 a 100
+- **THEN** el sistema responde 422 (por ejemplo «La página 4 no existe: hay 3»)
+
+### Requirement: Mis ventas
+El sistema SHALL responder `GET /mis-ventas` a cualquier usuario autenticado con las ventas del cliente asociado a ese usuario, con el mismo envoltorio (RN-14).
+
+#### Scenario: La cliente ve sólo las suyas
+- **WHEN** una usuaria con ficha de cliente pide `GET /mis-ventas`
+- **THEN** el sistema responde 200 sólo con sus ventas y `total` cuenta sólo las suyas
+
+#### Scenario: Usuario sin ficha de cliente
+- **WHEN** lo pide un usuario sin ficha de cliente
+- **THEN** el sistema responde 200 con `items` vacío, `total` 0 y `pages` 1
+
+#### Scenario: Sin sesión
+- **WHEN** se pide `GET /mis-ventas` sin cookie `access_token`
+- **THEN** el sistema responde 401
+
+### Requirement: Listados con consultas fijas
+El sistema SHALL armar cada listado con una cantidad de consultas que no depende del tamaño de la página: el conteo y la página (venta JOIN cliente), más la de roles en `GET /ventas`.
+
+#### Scenario: Distintos tamaños de página
+- **WHEN** se pide el mismo listado con `size` 1 y con `size` 4
+- **THEN** las dos peticiones ejecutan la misma cantidad de consultas

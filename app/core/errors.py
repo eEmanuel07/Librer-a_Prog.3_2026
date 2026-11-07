@@ -1,7 +1,7 @@
 """Errores de dominio y traducción de errores de integridad (RN-12).
 
-Los services lanzan ``NoEncontrado`` y ``Conflicto``; el router de cada
-módulo los pasa a 404 / 409 con el mismo mensaje. El UnitOfWork, al salir
+Los services lanzan ``NoEncontrado``, ``Conflicto`` y ``SinPermiso``; el router
+de cada módulo los pasa a 404 / 409 / 403 con el mismo mensaje. El UnitOfWork, al salir
 del bloque, traduce el ``IntegrityError`` con ``conflicto_por_integridad``:
 ningún error devuelve al cliente texto interno de la base (nombres de
 tablas, restricciones o trazas).
@@ -25,7 +25,7 @@ class ErrorDeDominio(Exception):
     """Error de negocio con mensaje propio, sin nada de HTTP.
 
     Los services lanzan sus subclases y cada router las traduce a un código
-    de estado (NoEncontrado -> 404, Conflicto -> 409).
+    de estado (NoEncontrado -> 404, Conflicto -> 409, SinPermiso -> 403).
     """
 
     def __init__(self, mensaje: str) -> None:
@@ -39,6 +39,14 @@ class NoEncontrado(ErrorDeDominio):
 
 class Conflicto(ErrorDeDominio):
     """La base rechazó la escritura (unicidad, clave foránea o check)."""
+
+
+class SinPermiso(ErrorDeDominio):
+    """El usuario está autenticado pero no puede ver o hacer esto (-> 403).
+
+    Para las decisiones que toma el service y no una dependencia de rol: por
+    ejemplo, una venta la ve el personal o el cliente dueño (RN-14).
+    """
 
 
 def conflicto_por_integridad(
