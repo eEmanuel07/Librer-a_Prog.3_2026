@@ -1,7 +1,7 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 
 from app.core.dependencies import get_usuario_actual
-from app.core.errors import Conflicto, NoEncontrado
+from app.core.errors import Conflicto, NoEncontrado, SinPermiso
 from app.core.pagination import Paginacion, paginacion
 from app.modules.usuarios.models import Usuario
 from app.modules.ventas import service
@@ -45,8 +45,12 @@ async def listar_ventas(
 async def obtener_venta(
     venta_id: int,
     uow: VentaUnitOfWork = Depends(get_ventas_uow),
+    # Sin requiere_rol: el dueño la ve sin ser personal. Decide el service (RN-14).
+    usuario: Usuario = Depends(get_usuario_actual),
 ) -> VentaRead:
     try:
-        return await service.obtener_venta(uow, venta_id)
+        return await service.ver_venta(uow, venta_id, usuario)
     except NoEncontrado as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error.mensaje) from None
+    except SinPermiso as error:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=error.mensaje) from None

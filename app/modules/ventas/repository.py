@@ -1,10 +1,12 @@
 from collections.abc import Sequence
 
+from sqlalchemy import Row
 from sqlalchemy.orm import joinedload, selectinload
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.repository import BaseRepository
+from app.modules.clientes.models import Cliente
 from app.modules.ventas.models import RenglonVenta, Venta
 
 
@@ -23,6 +25,8 @@ class VentaRepository(BaseRepository[Venta]):
         # Cantidad fija de consultas, sin importar cuántos renglones tenga (C-07):
         #   1) venta JOIN cliente          -> joinedload (relación a uno)
         #   2) renglones JOIN libro        -> selectinload (colección) + joinedload (a uno)
+        # El libro se trae por su clave foránea, sin filtrar borrado_en: una venta
+        # vieja sigue mostrando el título aunque el libro esté dado de baja.
         consulta = (
             select(Venta)
             .where(Venta.id == venta_id)
@@ -33,6 +37,21 @@ class VentaRepository(BaseRepository[Venta]):
             # Si la venta ya está en la sesión (recién creada), la recarga con
             # sus relaciones en lugar de devolver la copia sin precargar.
             .execution_options(populate_existing=True)
+        )
+        return (await self.session.exec(consulta)).first()
+
+    async def obtener_dueno(self, venta_id: int) -> Row[tuple[int, int | None]] | None:
+        """El usuario web del cliente de la venta, para decidir si la puede ver (RN-14).
+
+        Una sola consulta (venta JOIN cliente), sin traer renglones: la decisión
+        se toma antes de cargar el detalle. ``None`` si la venta no existe; si
+        existe, la fila ``(venta_id, usuario_id)``, con ``usuario_id`` en
+        ``None`` cuando el cliente no tiene acceso web.
+        """
+        consulta = (
+            select(Venta.id, Cliente.usuario_id)
+            .join(Cliente, Venta.cliente_id == Cliente.id)
+            .where(Venta.id == venta_id)
         )
         return (await self.session.exec(consulta)).first()
 
