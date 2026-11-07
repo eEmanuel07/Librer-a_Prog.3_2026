@@ -26,8 +26,9 @@ async def crear_venta(
         venta = await service.crear_venta(uow, datos, usuario.id)
     except Conflicto as error:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=error.mensaje) from None
-    # El service ya hizo commit. Se agenda el aviso con datos simples (no la
-    # sesión ni el UoW); corre después de enviar la respuesta.
+    # Llegar acá quiere decir que la venta se confirmó: si no, el 409 ya salió
+    # arriba y no se agenda nada. Se agenda con datos simples (no la sesión ni el
+    # UoW) y corre después de enviar la respuesta.
     tareas.add_task(service.avisar_comprobante, venta.id, venta.cliente.email, venta.total)
     return venta
 
