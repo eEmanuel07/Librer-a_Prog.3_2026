@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
@@ -60,7 +61,39 @@ class LibroUpdate(SQLModel):
         return self
 
 
+class ReposicionCreate(SQLModel):
+    """Reposición de stock (E5). El motivo es fijo («Reposición»): no viaja."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    cantidad: int = Field(ge=1)
+
+
 # ---------- Salida ----------
+
+
+class MovimientoRead(SQLModel):
+    id: int
+    libro_id: int
+    venta_id: int | None  # None en el stock inicial y en las reposiciones
+    usuario_id: int
+    cantidad: int
+    motivo: str
+    cuando: datetime
+
+
+class LibroStock(SQLModel):
+    id: int
+    isbn: str
+    titulo: str
+    stock: int
+
+
+class ReposicionRead(SQLModel):
+    """El libro con su stock nuevo y el movimiento que lo cambió (C-13)."""
+
+    libro: LibroStock
+    movimiento: MovimientoRead
 
 
 class EditorialResumen(SQLModel):

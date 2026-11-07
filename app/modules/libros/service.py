@@ -5,7 +5,11 @@ from app.modules.libros.schemas import (
     LibroCreate,
     LibroRead,
     LibroResumen,
+    LibroStock,
     LibroUpdate,
+    MovimientoRead,
+    ReposicionCreate,
+    ReposicionRead,
 )
 from app.modules.libros.unit_of_work import LibroUnitOfWork
 
@@ -16,6 +20,7 @@ _DETALLE_CHECK = "Los datos del libro no cumplen las reglas del catálogo"
 _DETALLE_NO_EXISTE = "El libro no existe"
 
 _MOTIVO_STOCK_INICIAL = "Stock inicial"
+_MOTIVO_REPOSICION = "Reposición"
 
 _MENSAJES_409 = {
     "unique": _DETALLE_UNIQUE,  # RN-01 / C-13
@@ -95,6 +100,42 @@ async def actualizar_libro(uow: LibroUnitOfWork, libro_id: int, datos: LibroUpda
 
     # la lectura va después de cerrar el bloque de escritura (no se anidan)
     return await obtener_libro(uow, libro_id)
+
+
+async def reponer_libro(
+    uow: LibroUnitOfWork, libro_id: int, datos: ReposicionCreate, usuario_id: int
+) -> ReposicionRead:
+    """Suma stock por mover_stock (RN-11) y deja el movimiento «Reposición», en un solo bloque.
+
+    Se busca el libro incluyendo los dados de baja para distinguir los dos casos:
+    si no existe, 404; si está dado de baja, mover_stock lanza Conflicto y es 409 (RN-13).
+    """
+    async with uow:
+        libro = await uow.libros.get_by_id_including_deleted(libro_id)
+        if libro is None:
+            raise NoEncontrado(_DETALLE_NO_EXISTE)
+        movimiento = await uow.libros.mover_stock(
+            libro, datos.cantidad, _MOTIVO_REPOSICION, usuario_id
+        )
+        return ReposicionRead(
+            libro=LibroStock.model_validate(libro, from_attributes=True),
+            movimiento=MovimientoRead.model_validate(movimiento, from_attributes=True),
+        )
+
+
+async def listar_movimientos(
+    uow: LibroUnitOfWork, libro_id: int, params: ParametrosPagina
+) -> Pagina[MovimientoRead]:
+    """Los movimientos del libro, paginados. Un libro dado de baja sigue mostrándolos."""
+    async with uow:
+        if await uow.libros.get_by_id_including_deleted(libro_id) is None:
+            raise NoEncontrado(_DETALLE_NO_EXISTE)
+        movimientos, total = await uow.libros.listar_movimientos_pagina(libro_id, params)
+        return Pagina.armar(
+            [MovimientoRead.model_validate(m, from_attributes=True) for m in movimientos],
+            total,
+            params,
+        )
 
 
 async def dar_de_baja_libro(uow: LibroUnitOfWork, libro_id: int) -> None:
