@@ -32,6 +32,7 @@
 | `j4-aviso-comprobante` | J4 | Joaquín | [#88](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/88) | En revisión (archivado en su rama) | `openspec/specs/ventas` |
 | `j5-detalle-venta-dueno` | J5 | Joaquín | [#89](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/89) | En revisión (archivado en su rama) | `openspec/specs/ventas` |
 | `j6-mis-ventas-y-ventas` | J6 | Joaquín | por abrir | En revisión (archivado en su rama) | `openspec/specs/ventas` |
+| `e4-libros-alta-patch-baja` | E4 | Elías | [#86](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/86) | Mergeado y archivado | `openspec/specs/catalogo-libros` |
 | `r2-requiere-rol` | R2 | Bruno | [#93](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/93) | En revisión (archivado en su rama) | `openspec/specs/autorizacion` |
 | `r5-roles-con-vigencia` | R5 | Bruno | por abrir | En revisión (archivado en su rama) | `openspec/specs/autorizacion` |
 
@@ -57,7 +58,7 @@ E1 + E2 ── E3 punto único de stock [x] ──┐
 H1 ── H5 intento_acceso [x] ── H4 login [x] ── H6
                                          │
 FASE 2 · Funcionalidad (casi todo espera B4 y R2)
-R2 ──┬── E4 alta/PATCH/baja libros ──┐
+R2 ──┬── E4 alta/PATCH/baja libros [x] ┐
      ├── E5 reposición y movimientos ┼── E7 solo_agregado.sql + .http libros [~] (también E6)
      ├── J3 venta con stock (también E3, B4) 🔓 ──┬── J4 aviso
      │                                            └── J5 detalle sin N+1 (también R1) ── J6 /mis-ventas, /ventas
@@ -347,7 +348,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `06_funcionalidades.md` §Ej. 4 · `05_reglas_de_negocio.md` RN-06, RN-16
 
 ### [E4] `libros-alta-patch-baja` · #23
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` mergeado (PR #86); el rol ADMIN se suma con R2
 - **Scope**: `POST /libros` con `stock_inicial` y su movimiento, `PATCH` sólo de título y precio, `DELETE` con borrado lógico (204), ISBN recargable (RN-13), envoltorio en el listado
 - **Dependencias**: E3, R2 · 🔓 Destraba: E7
 - **Governance**: MEDIO
