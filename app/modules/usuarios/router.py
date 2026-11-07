@@ -13,6 +13,7 @@ from app.modules.usuarios.schemas import (
     AsignacionRolRead,
     AsignarRolRequest,
     CambioPasswordRequest,
+    CrearPersonalRequest,
     CredencialesInvalidasError,
     LimiteIntentosError,
     LoginRequest,
@@ -21,11 +22,13 @@ from app.modules.usuarios.schemas import (
     RegistroRequest,
     RegistroResponse,
     RolNombre,
+    UsuarioRead,
     YoResponse,
 )
 from app.modules.usuarios.service import (
     asignar_rol as service_asignar_rol,
     cambiar_password as service_cambiar_password,
+    crear_personal as service_crear_personal,
     listar_roles_usuario as service_listar_roles_usuario,
     login as service_login,
     obtener_yo as service_obtener_yo,
@@ -161,7 +164,30 @@ async def cambiar_password_endpoint(
         ) from exc
 
 
-# --- Rutas de Roles con Vigencia (Ej. 5 / [R5]) ---
+# --- Rutas de Alta de Personal y Roles con Vigencia (Ej. 5 / [R4], [R5]) ---
+
+
+@router_usuarios.post(
+    "",
+    response_model=UsuarioRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def crear_personal_endpoint(
+    datos: CrearPersonalRequest,
+    actor: Usuario = Depends(requiere_rol("ADMIN")),
+    uow: UsuarioUnitOfWork = Depends(get_usuario_uow),
+    settings: Settings = Depends(get_settings),
+) -> UsuarioRead:
+    """Crea una cuenta de personal con contraseña provisoria (solo ADMIN, RN-16)."""
+    try:
+        return await service_crear_personal(
+            uow=uow,
+            datos=datos,
+            actor=actor,
+            settings=settings,
+        )
+    except Conflicto as error:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=error.mensaje) from None
 
 
 @router_usuarios.post(
