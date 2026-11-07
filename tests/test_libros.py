@@ -25,7 +25,7 @@ from app.modules.editoriales.models import Editorial
 from app.modules.generos.models import Genero
 from app.modules.libros.models import Libro, MovimientoStock
 from app.modules.libros.repository import LibroRepository
-from app.modules.usuarios.models import Usuario
+from app.modules.usuarios.models import AsignacionRol, Usuario
 
 
 def _settings() -> Settings:
@@ -94,17 +94,30 @@ class _BaseLibros(unittest.TestCase):
             s.add(Genero(nombre="Novela"))
             s.add(Autor(nombre="Silvina Ocampo", nacionalidad="AR"))
             s.add(Autor(nombre="Adolfo Bioy Casares", nacionalidad="AR"))
-            s.add(
-                Usuario(
-                    email="admin@libreria.local",
-                    nombre="Admin",
-                    password_hash="no-es-un-hash",
-                    activo=True,
-                    debe_cambiar_password=False,
-                )
+            admin = Usuario(
+                email="admin@libreria.local",
+                nombre="Admin",
+                password_hash="no-es-un-hash",
+                activo=True,
+                debe_cambiar_password=False,
             )
+            vendedor = Usuario(
+                email="vendedor@libreria.local",
+                nombre="Vendedor",
+                password_hash="no-es-un-hash",
+                activo=True,
+                debe_cambiar_password=False,
+            )
+            s.add_all([admin, vendedor])
+            s.flush()
+            # requiere_rol consulta los roles vigentes en la base (RN-04), no en el token.
+            s.add_all([
+                AsignacionRol(usuario_id=admin.id, rol="ADMIN"),
+                AsignacionRol(usuario_id=vendedor.id, rol="VENDEDOR"),
+            ])
             s.commit()
-            self.usuario = s.exec(select(Usuario)).one()
+            self.usuario = s.exec(select(Usuario).where(Usuario.email == admin.email)).one()
+            self.vendedor = s.exec(select(Usuario).where(Usuario.email == vendedor.email)).one()
 
         async def sesion_de_prueba():
             with Session(self.motor, expire_on_commit=False) as s:
@@ -417,6 +430,40 @@ class TestMovimientos(_BaseLibros):
 
         self.assertEqual((reponer.status_code, movimientos.status_code), (401, 401))
         self.assertEqual(self._libros_en_tabla()[0].stock, 4)
+
+
+class TestRolAdmin(_BaseLibros):
+    """Las escrituras de libros, la reposición y los movimientos son de ADMIN (RN-04)."""
+
+    def _como_vendedor(self) -> None:
+        app.dependency_overrides[get_usuario_actual] = lambda: self.vendedor
+
+    def test_un_vendedor_no_puede_escribir_en_el_catalogo(self) -> None:
+        libro = self._crear()  # como ADMIN
+        self._como_vendedor()
+
+        respuestas = {
+            "alta": self.cliente.post("/libros/", json=_alta(isbn="978-950-00-0099-9")),
+            "patch": self.cliente.patch(f"/libros/{libro['id']}", json={"titulo": "Nuevo"}),
+            "baja": self.cliente.delete(f"/libros/{libro['id']}"),
+            "reponer": self.cliente.post(f"/libros/{libro['id']}/reponer", json={"cantidad": 3}),
+            "movimientos": self.cliente.get(f"/libros/{libro['id']}/movimientos"),
+        }
+
+        self.assertEqual({k: r.status_code for k, r in respuestas.items()},
+                         {k: 403 for k in respuestas})
+        filas = self._libros_en_tabla()
+        self.assertEqual(len(filas), 1)
+        self.assertEqual((filas[0].titulo, filas[0].stock), (libro["titulo"], 4))
+        self.assertIsNone(filas[0].borrado_en)
+        self.assertEqual(len(self._movimientos(libro["id"])), 1)
+
+    def test_las_lecturas_del_catalogo_siguen_siendo_publicas(self) -> None:
+        libro = self._crear()
+        del app.dependency_overrides[get_usuario_actual]  # sin sesión
+
+        self.assertEqual(self.cliente.get("/libros/").status_code, 200)
+        self.assertEqual(self.cliente.get(f"/libros/{libro['id']}").status_code, 200)
 
 
 if __name__ == "__main__":

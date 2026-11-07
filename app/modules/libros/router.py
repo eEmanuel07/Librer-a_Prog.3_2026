@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
-from app.core.dependencies import get_usuario_actual
+from app.core.dependencies import requiere_rol
 from app.core.errors import Conflicto, NoEncontrado
 from app.core.paginacion import Pagina, ParametrosPagina, parametros_pagina
 from app.modules.libros import service
@@ -17,13 +17,15 @@ from app.modules.libros.unit_of_work import LibroUnitOfWork, get_libros_uow
 from app.modules.usuarios.models import Usuario
 
 router_publico = APIRouter(prefix="/libros", tags=["libros"])
+# Grupo abierto (R3): el catálogo es público. Grupo protegido: alta, PATCH, baja,
+# reposición y movimientos, todas con el rol ADMIN vigente en la base (RN-04).
 router_protegido = APIRouter(prefix="/libros", tags=["libros"])
 
 
 @router_protegido.post("/", response_model=LibroRead, status_code=status.HTTP_201_CREATED)
 async def crear_libro(
     datos: LibroCreate,
-    usuario: Usuario = Depends(get_usuario_actual),
+    usuario: Usuario = Depends(requiere_rol("ADMIN")),
     uow: LibroUnitOfWork = Depends(get_libros_uow),
 ) -> LibroRead:
     try:
@@ -58,7 +60,7 @@ async def obtener_libro(
 async def actualizar_libro(
     libro_id: int,
     datos: LibroUpdate,
-    usuario: Usuario = Depends(get_usuario_actual),
+    usuario: Usuario = Depends(requiere_rol("ADMIN")),
     uow: LibroUnitOfWork = Depends(get_libros_uow),
 ) -> LibroRead:
     try:
@@ -73,7 +75,7 @@ async def actualizar_libro(
 async def reponer_libro(
     libro_id: int,
     datos: ReposicionCreate,
-    usuario: Usuario = Depends(get_usuario_actual),
+    usuario: Usuario = Depends(requiere_rol("ADMIN")),
     uow: LibroUnitOfWork = Depends(get_libros_uow),
 ) -> ReposicionRead:
     try:
@@ -89,7 +91,7 @@ async def reponer_libro(
 async def listar_movimientos(
     libro_id: int,
     params: ParametrosPagina = Depends(parametros_pagina),
-    usuario: Usuario = Depends(get_usuario_actual),
+    usuario: Usuario = Depends(requiere_rol("ADMIN")),
     uow: LibroUnitOfWork = Depends(get_libros_uow),
 ) -> Pagina[MovimientoRead]:
     try:
@@ -101,7 +103,7 @@ async def listar_movimientos(
 @router_protegido.delete("/{libro_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def dar_de_baja_libro(
     libro_id: int,
-    usuario: Usuario = Depends(get_usuario_actual),
+    usuario: Usuario = Depends(requiere_rol("ADMIN")),
     uow: LibroUnitOfWork = Depends(get_libros_uow),
 ) -> Response:
     try:
