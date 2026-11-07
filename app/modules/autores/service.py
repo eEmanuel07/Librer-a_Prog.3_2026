@@ -1,4 +1,5 @@
 from app.core.errors import NoEncontrado
+from app.core.paginacion import Pagina, ParametrosPagina
 from app.modules.autores.models import Autor
 from app.modules.autores.schemas import AutorCreate, AutorRead, AutorUpdate, LibroDeAutor
 from app.modules.autores.unit_of_work import AutorUnitOfWork
@@ -38,9 +39,13 @@ async def actualizar_autor(uow: AutorUnitOfWork, autor_id: int, datos: AutorUpda
 
 
 async def listar_libros_de_autor(
-    uow: AutorUnitOfWork, autor_id: int, limit: int, offset: int
-) -> list[LibroDeAutor]:
+    uow: AutorUnitOfWork, autor_id: int, params: ParametrosPagina
+) -> Pagina[LibroDeAutor]:
     async with uow:
         await _buscar(uow, autor_id)
-        autorias = await uow.autores.listar_autorias(autor_id, limit, offset)
-        return [LibroDeAutor.desde_modelo(a) for a in autorias]
+        autorias, total = await uow.autores.listar_autorias_pagina(autor_id, params)
+        return Pagina.armar(
+            [LibroDeAutor.desde_modelo(a) for a in autorias],
+            total,
+            params,
+        )
