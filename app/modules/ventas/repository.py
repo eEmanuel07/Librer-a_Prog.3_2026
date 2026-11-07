@@ -4,14 +4,20 @@ from sqlalchemy.orm import joinedload, selectinload
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.repository import BaseRepository
 from app.modules.ventas.models import RenglonVenta, Venta
 
 
-class VentaRepository:
-    """Solo consultas sobre ventas. No hace commit: eso es del UoW."""
+class VentaRepository(BaseRepository[Venta]):
+    """Consultas sobre ventas. No hace commit: eso es del UoW.
+
+    ``add`` (de BaseRepository) hace flush: al registrar una venta hace falta su
+    id antes de anotar los movimientos de stock, que la referencian. La cascada
+    de ``Venta.renglones`` agrega también los renglones.
+    """
 
     def __init__(self, session: AsyncSession) -> None:
-        self.session = session
+        super().__init__(session, Venta)
 
     async def obtener_con_detalle(self, venta_id: int) -> Venta | None:
         # Cantidad fija de consultas, sin importar cuántos renglones tenga (C-07):
@@ -40,7 +46,3 @@ class VentaRepository:
             .offset(offset)
         )
         return (await self.session.exec(consulta)).all()
-
-    def agregar(self, venta: Venta) -> None:
-        # La cascada de Venta.renglones agrega también los renglones.
-        self.session.add(venta)

@@ -68,6 +68,26 @@ class LibroRepository(SoftDeleteRepository[Libro]):
         )
         return dict(filas.all())
 
+    async def obtener_para_vender(self, libro_ids: list[int]) -> Sequence[Libro]:
+        """Los libros de una venta, bloqueados hasta que la venta confirme (FOR UPDATE).
+
+        Trae también los dados de baja, para que ``mover_stock`` responda «El libro
+        está dado de baja» (C-12) y no «no existe». El bloqueo hace que dos ventas
+        simultáneas del mismo libro no lean el mismo stock y lo descuenten las dos:
+        la segunda espera a que la primera confirme y lee el stock ya descontado.
+        Se ordena por id para que dos ventas con libros en común los bloqueen en el
+        mismo orden y no queden esperándose una a la otra.
+        """
+        consulta = (
+            select(Libro)
+            .where(Libro.id.in_(libro_ids))
+            .order_by(Libro.id)
+            .with_for_update()
+            # si el libro ya estaba en la sesión, usa el stock que acaba de bloquear
+            .execution_options(populate_existing=True)
+        )
+        return (await self.session.exec(consulta)).all()
+
     def agregar(self, libro: Libro) -> None:
         self.session.add(libro)
 

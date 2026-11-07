@@ -1,7 +1,9 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 
+from app.core.dependencies import get_usuario_actual
 from app.core.errors import Conflicto, NoEncontrado
 from app.core.pagination import Paginacion, paginacion
+from app.modules.usuarios.models import Usuario
 from app.modules.ventas import service
 from app.modules.ventas.schemas import VentaCreate, VentaRead, VentaResumen
 from app.modules.ventas.unit_of_work import VentaUnitOfWork, get_ventas_uow
@@ -16,9 +18,12 @@ async def crear_venta(
     datos: VentaCreate,
     tareas: BackgroundTasks,
     uow: VentaUnitOfWork = Depends(get_ventas_uow),
+    # Quien registra la venta queda en cada movimiento de stock. Recibe la misma
+    # sesión que el Unit of Work (get_session se resuelve una vez por petición).
+    usuario: Usuario = Depends(get_usuario_actual),
 ) -> VentaRead:
     try:
-        venta = await service.crear_venta(uow, datos)
+        venta = await service.crear_venta(uow, datos, usuario.id)
     except Conflicto as error:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=error.mensaje) from None
     # El service ya hizo commit. Se agenda el aviso con datos simples (no la
