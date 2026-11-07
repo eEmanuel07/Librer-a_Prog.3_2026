@@ -32,6 +32,8 @@
 | `j4-aviso-comprobante` | J4 | Joaquín | [#88](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/88) | En revisión (archivado en su rama) | `openspec/specs/ventas` |
 | `j5-detalle-venta-dueno` | J5 | Joaquín | [#89](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/89) | En revisión (archivado en su rama) | `openspec/specs/ventas` |
 | `j6-mis-ventas-y-ventas` | J6 | Joaquín | por abrir | En revisión (archivado en su rama) | `openspec/specs/ventas` |
+| `h7-auth-http` | H7 | Hernán | por abrir | En revisión (archivado en su rama) | `test/auth.http` |
+
 | `e4-libros-alta-patch-baja` | E4 | Elías | [#86](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/86) | Mergeado y archivado | `openspec/specs/catalogo-libros` |
 | `r2-requiere-rol` | R2 | Bruno | [#93](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/93) | En revisión (archivado en su rama) | `openspec/specs/autorizacion` |
 | `r5-roles-con-vigencia` | R5 | Bruno | por abrir | En revisión (archivado en su rama) | `openspec/specs/autorizacion` |
@@ -415,7 +417,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `04_modelo_de_datos.md` §Seed data · `03_actores_y_roles.md` §Usuarios iniciales · `10_preguntas_abiertas.md` IN-01
 
 ### [H7] `auth-http` · #43
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama)
 - **Scope**: `test/auth.http` con C-01 a C-05
 - **Dependencias**: H3, H4, H6, R8
 - **Governance**: BAJO
