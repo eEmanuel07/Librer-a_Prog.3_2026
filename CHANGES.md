@@ -37,10 +37,10 @@
 | `e4-libros-alta-patch-baja` | E4 | Elías | [#86](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/86) | Mergeado y archivado | `openspec/specs/catalogo-libros` |
 | `r2-requiere-rol` | R2 | Bruno | [#93](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/93) | Mergeado y archivado | `openspec/specs/autorizacion` |
 | `r5-roles-con-vigencia` | R5 | Bruno | [#94](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/94) | Mergeado y archivado | `openspec/specs/autorizacion` |
-| `r4-alta-de-personal` | R4 | Bruno | [#96](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/96) | En revisión (archivado en su rama) | `openspec/specs/autorizacion` |
-| `r6-eventos-paginado` | R6 | Bruno | [#97](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/97) | En revisión (archivado en su rama) | `openspec/specs/autorizacion` |
-| `r7-proteger-catalogo` | R7 | Bruno | [#98](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/98) | En revisión (archivado en su rama) | `openspec/specs/autorizacion` |
-| `r3-dos-grupos-de-rutas` | R3 | Bruno | por abrir | En revisión (archivado en su rama) | `openspec/specs/autorizacion` |
+| `r4-alta-de-personal` | R4 | Bruno | [#96](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/96) | Mergeado y archivado | `openspec/specs/autorizacion` |
+| `r6-eventos-paginado` | R6 | Bruno | [#97](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/97) | Mergeado y archivado | `openspec/specs/autorizacion` |
+| `r7-proteger-catalogo` | R7 | Bruno | [#98](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/98) | Mergeado y archivado | `openspec/specs/autorizacion` |
+| `r3-dos-grupos-de-rutas` | R3 | Bruno | [#99](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/99) | Mergeado y archivado | `openspec/specs/autorizacion` |
 
 La fundación de Active Stack (`knowledge-base/`, `CHANGES.md`, `AGENTS.md`, `CLAUDE.md`) quedó mergeada en [#78](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/78). Las demás tareas `[x]` (incluida E6 en [#79](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/79)) no tienen change en `openspec/`.
 
