@@ -8,10 +8,11 @@ from app.modules.generos.schemas import GeneroCreate, GeneroRead, LibroDeGenero
 from app.modules.generos.unit_of_work import GeneroUnitOfWork, get_generos_uow
 from app.modules.usuarios.models import Usuario
 
-router = APIRouter(prefix="/generos", tags=["generos"])
+router_publico = APIRouter(prefix="/generos", tags=["generos"])
+router_protegido = APIRouter(prefix="/generos", tags=["generos"])
 
 
-@router.post("/", response_model=GeneroRead, status_code=status.HTTP_201_CREATED)
+@router_protegido.post("/", response_model=GeneroRead, status_code=status.HTTP_201_CREATED)
 async def crear_genero(
     datos: GeneroCreate,
     _actor: Usuario = Depends(requiere_rol("ADMIN")),
@@ -23,7 +24,7 @@ async def crear_genero(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=error.mensaje) from None
 
 
-@router.get("/", response_model=Pagina[GeneroRead])
+@router_publico.get("/", response_model=Pagina[GeneroRead])
 async def listar_generos(
     params: ParametrosPagina = Depends(parametros_pagina),
     uow: GeneroUnitOfWork = Depends(get_generos_uow),
@@ -31,7 +32,7 @@ async def listar_generos(
     return await service.listar_generos(uow, params)
 
 
-@router.get("/{genero_id}/libros", response_model=Pagina[LibroDeGenero])
+@router_publico.get("/{genero_id}/libros", response_model=Pagina[LibroDeGenero])
 async def listar_libros_de_genero(
     genero_id: int,
     params: ParametrosPagina = Depends(parametros_pagina),
@@ -41,3 +42,8 @@ async def listar_libros_de_genero(
         return await service.listar_libros_de_genero(uow, genero_id, params)
     except NoEncontrado as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error.mensaje) from None
+
+
+router = APIRouter()
+router.include_router(router_publico)
+router.include_router(router_protegido)

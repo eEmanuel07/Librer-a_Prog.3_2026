@@ -40,6 +40,7 @@
 | `r4-alta-de-personal` | R4 | Bruno | [#96](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/96) | Mergeado y archivado | `openspec/specs/autorizacion` |
 | `r6-eventos-paginado` | R6 | Bruno | [#97](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/97) | Mergeado y archivado | `openspec/specs/autorizacion` |
 | `r7-proteger-catalogo` | R7 | Bruno | [#98](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/98) | Mergeado y archivado | `openspec/specs/autorizacion` |
+| `r3-dos-grupos-de-rutas` | R3 | Bruno | [#99](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/99) | Mergeado y archivado | `openspec/specs/autorizacion` |
 
 La fundación de Active Stack (`knowledge-base/`, `CHANGES.md`, `AGENTS.md`, `CLAUDE.md`) quedó mergeada en [#78](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/78). Las demás tareas `[x]` (incluida E6 en [#79](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/79)) no tienen change en `openspec/`.
 
@@ -318,7 +319,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `05_reglas_de_negocio.md` RN-04 · `03_actores_y_roles.md` §RBAC
 
 ### [R3] `dos-grupos-de-rutas` · #47
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama)
 - **Scope**: grupo abierto y grupo protegido en `main.py`, con el control del cambio obligatorio montado una vez (RN-06, 403); lo propio (RN-14). Ver IN-01: dónde queda `main.py`
 - **Dependencias**: R1 · 🔓 Destraba: R9
 - **Governance**: CRITICO

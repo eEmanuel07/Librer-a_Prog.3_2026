@@ -8,10 +8,11 @@ from app.modules.autores.schemas import AutorCreate, AutorRead, AutorUpdate, Lib
 from app.modules.autores.unit_of_work import AutorUnitOfWork, get_autores_uow
 from app.modules.usuarios.models import Usuario
 
-router = APIRouter(prefix="/autores", tags=["autores"])
+router_publico = APIRouter(prefix="/autores", tags=["autores"])
+router_protegido = APIRouter(prefix="/autores", tags=["autores"])
 
 
-@router.post("/", response_model=AutorRead, status_code=status.HTTP_201_CREATED)
+@router_protegido.post("/", response_model=AutorRead, status_code=status.HTTP_201_CREATED)
 async def crear_autor(
     datos: AutorCreate,
     _actor: Usuario = Depends(requiere_rol("ADMIN")),
@@ -23,7 +24,7 @@ async def crear_autor(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=error.mensaje) from None
 
 
-@router.get("/{autor_id}", response_model=AutorRead)
+@router_publico.get("/{autor_id}", response_model=AutorRead)
 async def obtener_autor(
     autor_id: int,
     uow: AutorUnitOfWork = Depends(get_autores_uow),
@@ -34,7 +35,7 @@ async def obtener_autor(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error.mensaje) from None
 
 
-@router.patch("/{autor_id}", response_model=AutorRead)
+@router_protegido.patch("/{autor_id}", response_model=AutorRead)
 async def actualizar_autor(
     autor_id: int,
     datos: AutorUpdate,
@@ -49,7 +50,7 @@ async def actualizar_autor(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=error.mensaje) from None
 
 
-@router.get("/{autor_id}/libros", response_model=Pagina[LibroDeAutor])
+@router_publico.get("/{autor_id}/libros", response_model=Pagina[LibroDeAutor])
 async def listar_libros_de_autor(
     autor_id: int,
     params: ParametrosPagina = Depends(parametros_pagina),
@@ -59,3 +60,8 @@ async def listar_libros_de_autor(
         return await service.listar_libros_de_autor(uow, autor_id, params)
     except NoEncontrado as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error.mensaje) from None
+
+
+router = APIRouter()
+router.include_router(router_publico)
+router.include_router(router_protegido)

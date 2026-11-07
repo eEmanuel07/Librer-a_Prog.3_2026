@@ -16,14 +16,11 @@ from app.modules.libros.schemas import (
 from app.modules.libros.unit_of_work import LibroUnitOfWork, get_libros_uow
 from app.modules.usuarios.models import Usuario
 
-router = APIRouter(prefix="/libros", tags=["libros"])
-
-# Las escrituras son del grupo protegido, rol ADMIN. Por ahora piden sesión
-# (get_usuario_actual, 401); cuando entre requiere_rol (R2, #46) cada una cambia
-# esa dependencia por la del rol ADMIN (403), sin tocar el service.
+router_publico = APIRouter(prefix="/libros", tags=["libros"])
+router_protegido = APIRouter(prefix="/libros", tags=["libros"])
 
 
-@router.post("/", response_model=LibroRead, status_code=status.HTTP_201_CREATED)
+@router_protegido.post("/", response_model=LibroRead, status_code=status.HTTP_201_CREATED)
 async def crear_libro(
     datos: LibroCreate,
     usuario: Usuario = Depends(get_usuario_actual),
@@ -35,7 +32,7 @@ async def crear_libro(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=error.mensaje) from None
 
 
-@router.get("/", response_model=Pagina[LibroResumen])
+@router_publico.get("/", response_model=Pagina[LibroResumen])
 async def listar_libros(
     titulo: str | None = Query(default=None, description="Parte del título, sin distinguir mayúsculas"),
     genero_id: int | None = Query(default=None, description="Sólo los libros de este género"),
@@ -46,7 +43,7 @@ async def listar_libros(
     return await service.listar_libros(uow, params, titulo=titulo, genero_id=genero_id)
 
 
-@router.get("/{libro_id}", response_model=LibroRead)
+@router_publico.get("/{libro_id}", response_model=LibroRead)
 async def obtener_libro(
     libro_id: int,
     uow: LibroUnitOfWork = Depends(get_libros_uow),
@@ -57,7 +54,7 @@ async def obtener_libro(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error.mensaje) from None
 
 
-@router.patch("/{libro_id}", response_model=LibroRead)
+@router_protegido.patch("/{libro_id}", response_model=LibroRead)
 async def actualizar_libro(
     libro_id: int,
     datos: LibroUpdate,
@@ -72,7 +69,7 @@ async def actualizar_libro(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=error.mensaje) from None
 
 
-@router.post("/{libro_id}/reponer", response_model=ReposicionRead)
+@router_protegido.post("/{libro_id}/reponer", response_model=ReposicionRead)
 async def reponer_libro(
     libro_id: int,
     datos: ReposicionCreate,
@@ -88,7 +85,7 @@ async def reponer_libro(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=error.mensaje) from None
 
 
-@router.get("/{libro_id}/movimientos", response_model=Pagina[MovimientoRead])
+@router_protegido.get("/{libro_id}/movimientos", response_model=Pagina[MovimientoRead])
 async def listar_movimientos(
     libro_id: int,
     params: ParametrosPagina = Depends(parametros_pagina),
@@ -101,7 +98,7 @@ async def listar_movimientos(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error.mensaje) from None
 
 
-@router.delete("/{libro_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router_protegido.delete("/{libro_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def dar_de_baja_libro(
     libro_id: int,
     usuario: Usuario = Depends(get_usuario_actual),
@@ -112,3 +109,8 @@ async def dar_de_baja_libro(
     except NoEncontrado as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=error.mensaje) from None
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+router = APIRouter()
+router.include_router(router_publico)
+router.include_router(router_protegido)
