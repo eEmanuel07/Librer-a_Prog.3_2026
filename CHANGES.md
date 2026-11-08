@@ -5,7 +5,7 @@
 > **Leer este archivo antes de ejecutar cualquier `/opsx:propose`.**
 >
 > **IDs:** se usan los códigos de las issues (`B4`, `H3`…), donde la letra es de quien la hace, y no `C-NN`, porque la consigna ya usa `C-01…C-16` para los **casos de prueba**.
-> **Estado** al 2026-11-06, según el **estado real de los PR** y no sólo el del tablero: `[x]` mergeado en `main` · `[~]` PR abierto, en revisión · `[ ]` pendiente.
+> **Estado** al 2026-11-08, según el **estado real de los PR** y no sólo el del tablero: `[x]` mergeado en `main` · `[~]` PR abierto, en revisión · `[ ]` pendiente.
 > 🔓 **Destraba** marca la tarea que, al terminarse, habilita a otras.
 
 ---
@@ -29,15 +29,15 @@
 | `b6-migracion-3` | B6 | Belén | [#76](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/76) | Mergeado y archivado (change retroactivo) | `openspec/specs/esquema-base-datos` |
 | `b4-unit-of-work` | B4 | Belén | [#77](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/77) | Mergeado y archivado | `openspec/specs/transacciones` |
 | `b2-lifespan-health` | B2 | Belén | [#81](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/81) | Mergeado y archivado | `openspec/specs/ciclo-de-vida-y-salud` |
-| `b7-readme` | B7 | Belén | [#106](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/106) | En revisión (archivado en su rama) | `openspec/specs/documentacion-entrega` |
+| `b7-readme` | B7 | Belén | [#106](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/106) | Mergeado y archivado | `openspec/specs/documentacion-entrega` |
 | `h3-auth-registro` | H3 | Hernán | [#84](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/84) | Mergeado y archivado | `openspec/specs/autenticacion` |
 | `h6-auth-logout-yo-cambio` | H6 | Hernán | [#85](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/85) | Mergeado y archivado | `openspec/specs/autenticacion` |
 | `j3-venta-con-stock` | J3 | Joaquín | [#87](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/87) | Mergeado y archivado | `openspec/specs/ventas` |
 | `j4-aviso-comprobante` | J4 | Joaquín | [#88](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/88) | Mergeado y archivado | `openspec/specs/ventas` |
 | `j5-detalle-venta-dueno` | J5 | Joaquín | [#89](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/89) | Mergeado y archivado | `openspec/specs/ventas` |
 | `j6-mis-ventas-y-ventas` | J6 | Joaquín | [#90](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/90) | Mergeado y archivado | `openspec/specs/ventas` |
-| `j7-clientes-con-acceso` | J7 | Joaquín | por abrir | En revisión (archivado en su rama) | `openspec/specs/clientes`, `openspec/specs/ventas` |
-| `j8-ventas-http-c15` | J8 | Joaquín | por abrir | En revisión (archivado en su rama) | `openspec/specs/ventas` |
+| `j7-clientes-con-acceso` | J7 | Joaquín | [#107](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/107) | Mergeado y archivado | `openspec/specs/clientes`, `openspec/specs/ventas` |
+| `j8-ventas-http-c15` | J8 | Joaquín | [#108](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/108) | Mergeado y archivado | `openspec/specs/ventas` |
 | `h7-auth-http` | H7 | Hernán | [#95](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/95) | Mergeado y archivado | `test/auth.http` |
 
 | `e4-libros-alta-patch-baja` | E4 | Elías | [#86](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/86) | Mergeado y archivado | `openspec/specs/catalogo-libros` |
@@ -52,7 +52,7 @@
 | `r3-dos-grupos-de-rutas` | R3 | Bruno | [#99](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/99) | Mergeado y archivado | `openspec/specs/autorizacion` |
 | `r8-seed-en-la-raiz` | R8 | Bruno | [#100](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/100) | Mergeado y archivado | `openspec/specs/datos-iniciales` |
 | `r9-seguridad-http` | R9 | Bruno | [#101](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/101) | Mergeado y archivado | `test/seguridad.http` |
-| `h8-revision-rnf` | H8 | Hernán | por abrir | En revisión (archivado en su rama) | `tests/test_rnf.py` |
+| `h8-revision-rnf` | H8 | Hernán | [#109](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/109) | Mergeado y archivado | `tests/test_rnf.py` |
 
 La fundación de Active Stack (`knowledge-base/`, `CHANGES.md`, `AGENTS.md`, `CLAUDE.md`) quedó mergeada en [#78](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/78). Las demás tareas `[x]` (incluida E6 en [#79](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/79)) no tienen change en `openspec/`.
 
@@ -65,31 +65,31 @@ FASE 0 · Fundamentos
 B1 Settings [x] ──┬── B2 Lifespan y health [x]
                   └── H2 security.py [x] ───────────────┐
 B3 BaseRepository [x] ──┬── E2 SoftDeleteRepository [x] │
-                        └── B4 UnitOfWork [x] 🔓 ───────┼──┬── R1 get_usuario_actual ──┬── R2 requiere_rol 🔓
-B5 Paginación [x]                                       │  │                           ├── R3 dos grupos de rutas
-J1 Dockerfile [x] ── J2 probar imagen [x] ── E8 VPS ── E9 DEPLOY.md
-                                                        │  ├── R5 roles con vigencia ──┘ (R2 depende de R1 y R5)
-FASE 1 · Modelos y migraciones                          │  ├── H3 registro (también H1, H2)
-E0 nombres [x] ──┬── H1 modelos usuarios [x] ──┐        │  ├── R4 alta de personal (también R2) ── H6 logout/yo/cambio
+                        └── B4 UnitOfWork [x] 🔓 ───────┼──┬── R1 get_usuario_actual [x] ──┬── R2 requiere_rol [x] 🔓
+B5 Paginación [x]                                       │  │                               ├── R3 dos grupos de rutas [x]
+J1 Dockerfile [x] ── J2 probar imagen [x] ── E8 VPS ── E9 DEPLOY.md [~]
+                                                        │  ├── R5 roles con vigencia [x] ──┘ (R2 depende de R1 y R5)
+FASE 1 · Modelos y migraciones                          │  ├── H3 registro [x] (también H1, H2)
+E0 nombres [x] ──┬── H1 modelos usuarios [x] ──┐        │  ├── R4 alta de personal [x] (también R2) ── H6 logout/yo/cambio [x]
                  └── E1 modelos libros [x] ────┴── B6 Migración 3 [x] ── E6 Migración 4 (disparador) [x]
 E1 + E2 ── E3 punto único de stock [x] ──┐
-H1 ── H5 intento_acceso [x] ── H4 login [x] ── H6
+H1 ── H5 intento_acceso [x] ── H4 login [x] ── H6 [x]
                                          │
 FASE 2 · Funcionalidad (casi todo espera B4 y R2)
 R2 ──┬── E4 alta/PATCH/baja libros [x] ┐
      ├── E5 reposición y movimientos [x] ┼── E7 solo_agregado.sql + .http libros [x] (también E6)
-     ├── J3 venta con stock (también E3, B4) 🔓 ──┬── J4 aviso
-     │                                            └── J5 detalle sin N+1 (también R1) ── J6 /mis-ventas, /ventas
-     ├── J7 clientes con acceso
-     ├── R4 ── R6 /eventos (también R5)
-     └── R7 proteger editoriales/géneros/autores
+     ├── J3 venta con stock [x] (también E3, B4) 🔓 ──┬── J4 aviso [x]
+     │                                                └── J5 detalle sin N+1 [x] (también R1) ── J6 /mis-ventas, /ventas [x]
+     ├── J7 clientes con acceso [x]
+     ├── R4 [x] ── R6 /eventos [x] (también R5)
+     └── R7 proteger editoriales/géneros/autores [x]
 
 FASE 3 · Cierre
-R8 seed.py en la raíz (E1, H1, E3: ya se puede) 🔓 ──┬── H7 auth.http (H3, H4, H6)
-                                                     ├── R9 seguridad.http (R2, R3, R5)
-                                                     └── J8 ventas.http + C-15 (J3, J4, J5)
-E7 + J8 ── B7 README [~] ──┐
-toda la fase 2 ── H8 revisión RNF, I1 integración ──┴── E10 .zip de entrega
+R8 seed.py en la raíz [x] (E1, H1, E3: ya se puede) 🔓 ──┬── H7 auth.http [x] (H3, H4, H6)
+                                                         ├── R9 seguridad.http [x] (R2, R3, R5)
+                                                         └── J8 ventas.http + C-15 [x] (J3, J4, J5)
+E7 + J8 ── B7 README [x] ──┐
+toda la fase 2 ── H8 revisión RNF [x], I1 integración ──┴── E10 .zip de entrega
 ```
 
 ### Paralelismo por fase
@@ -331,28 +331,28 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `05_reglas_de_negocio.md` RN-04 · `03_actores_y_roles.md` §RBAC
 
 ### [R3] `dos-grupos-de-rutas` · #47
-- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama)
+- **Estado**: `[x]` mergeado (PR #99)
 - **Scope**: grupo abierto y grupo protegido en `main.py`, con el control del cambio obligatorio montado una vez (RN-06, 403); lo propio (RN-14). Ver IN-01: dónde queda `main.py`
 - **Dependencias**: R1 · 🔓 Destraba: R9
 - **Governance**: CRITICO
 - **Leer antes**: `05_reglas_de_negocio.md` RN-06 · `02_descripcion_general.md` §API · `10_preguntas_abiertas.md` IN-01
 
 ### [R4] `alta-de-personal` · #48
-- **Estado**: `[~]` en revisión (PR #96 listo, change archivado en su rama)
+- **Estado**: `[x]` mergeado (PR #96)
 - **Scope**: `POST /usuarios` con contraseña provisoria y `debe_cambiar_password`; evento de seguridad en el mismo bloque (RN-16)
 - **Dependencias**: R2, B4 · 🔓 Destraba: H6, R6
 - **Governance**: CRITICO
 - **Leer antes**: `05_reglas_de_negocio.md` RN-16 · `03_actores_y_roles.md` · `07_flujos_principales.md` §Flujo 6
 
 ### [R6] `eventos-paginado` · #50
-- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama)
+- **Estado**: `[x]` mergeado (PR #97)
 - **Scope**: `GET /eventos` paginado con el envoltorio (ADMIN)
 - **Dependencias**: R4, R5, B5
 - **Governance**: ALTO
 - **Leer antes**: `04_modelo_de_datos.md` §evento_seguridad · `06_funcionalidades.md` §Ej. 3
 
 ### [R7] `proteger-catalogo` · #51
-- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama)
+- **Estado**: `[x]` mergeado (PR #98)
 - **Scope**: altas y PATCH de editoriales, géneros y autores sólo para ADMIN; listados con el envoltorio
 - **Dependencias**: R2, B5
 - **Governance**: MEDIO
@@ -408,7 +408,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `05_reglas_de_negocio.md` RN-14 · `06_funcionalidades.md` §Ej. 3
 
 ### [J7] `clientes-con-acceso` · #60
-- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama)
+- **Estado**: `[x]` mergeado (PR #107)
 - **Scope**: el módulo clientes protegido (VENDEDOR o ADMIN), con `usuario_id` y el envoltorio
 - **Dependencias**: H1, R2, B5
 - **Governance**: MEDIO
@@ -426,7 +426,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 ## FASE 3 — Cierre
 
 ### [R8] `seed-en-la-raiz` · #52
-- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama)
+- **Estado**: `[x]` mergeado (PR #100)
 - **Scope**: `seed.py` en la raíz con los datos de las págs. 19-20 (usuarios, catálogo, venta 1, movimientos que cumplen el invariante, línea `SISTEMA`); reemplaza a `scripts/seed.py`
 - **Dependencias**: E1, H1, E3 · 🔓 **Destraba: H7, R9, J8**
 - **Governance**: MEDIO
@@ -440,14 +440,14 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `06_funcionalidades.md` §Casos
 
 ### [R9] `seguridad-http` · #53
-- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama)
+- **Estado**: `[x]` mergeado (PR #101)
 - **Scope**: `test/seguridad.http` con C-06 a C-09 (varias sesiones con `# @name` y `# @no-cookie-jar`)
 - **Dependencias**: R2, R3, R5, R8
 - **Governance**: BAJO
 - **Leer antes**: `06_funcionalidades.md` §Casos
 
 ### [J8] `ventas-http-c15` · #61
-- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama; va después de J7)
+- **Estado**: `[x]` mergeado (PR #108)
 - **Scope**: `test/ventas.http` (C-10 a C-12) y evidencia de C-15 (las mismas consultas con 2 y con 4 renglones)
 - **Dependencias**: J3, J4, J5, R8 · 🔓 Destraba: B7
 - **Governance**: BAJO
@@ -461,14 +461,14 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `06_funcionalidades.md` §Casos · `05_reglas_de_negocio.md` RN-12
 
 ### [E9] `deploy-md` · #28
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[~]` en revisión (PR #103, borrador; se completa con E8)
 - **Scope**: `DEPLOY.md` (URL, fecha, comandos sin el contenido de las variables, cambios al TP, cómo actualizar) y `evidencia/` de D-01 a D-08
 - **Dependencias**: E8
 - **Governance**: MEDIO
 - **Leer antes**: `11_entrega_y_despliegue.md`
 
 ### [H8] `revision-rnf` · #44
-- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama)
+- **Estado**: `[x]` mergeado (PR #109)
 - **Scope**: revisar los requisitos no funcionales: sin secretos, sin carga perezosa, sin 500 por entrada inválida, RN-15
 - **Dependencias**: todas las de la fase 2 · 🔓 Destraba: E10
 - **Governance**: ALTO
@@ -482,7 +482,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `06_funcionalidades.md` §Casos · `11_entrega_y_despliegue.md`
 
 ### [B7] `readme-parcial` · #36
-- **Estado**: `[~]` en revisión (PR #106, change archivado en su rama)
+- **Estado**: `[x]` mergeado (PR #106)
 - **Scope**: `README.md` con integrantes y los pasos desde cero (entorno virtual, dependencias, `.env` y la clave de firma, migraciones, seed, arranque con `uvicorn app.main:app --reload`)
 - **Dependencias**: E7, J8 · 🔓 Destraba: E10
 - **Governance**: BAJO
@@ -503,6 +503,6 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 |---|---|---|---|---|
 | 0 · Fundamentos | 9 | 9 | 0 | 0 |
 | 1 · Modelos y migraciones | 4 | 4 | 0 | 0 |
-| 2 · Funcionalidad | 21 | 4 | 0 | 17 |
-| 3 · Cierre | 10 | 0 | 2 | 8 |
-| **Total** | **44** | **17** | **2** | **25** |
+| 2 · Funcionalidad | 21 | 20 | 0 | 1 |
+| 3 · Cierre | 10 | 7 | 1 | 2 |
+| **Total** | **44** | **40** | **1** | **3** |
