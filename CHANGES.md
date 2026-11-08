@@ -42,7 +42,8 @@
 
 | `e4-libros-alta-patch-baja` | E4 | Elías | [#86](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/86) | Mergeado y archivado | `openspec/specs/catalogo-libros` |
 | `e5-reposicion-y-movimientos` | E5 | Elías | [#92](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/92) | Mergeado y archivado | `openspec/specs/movimientos-stock` |
-| `e7-http-libros` | E7 | Elías | [#105](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/105) | Mergeado (change sin archivar en `openspec/changes/e7-http-libros`) | `openspec/specs/casos-de-prueba-libros` |
+| `libros-rol-admin` | E4, E5 | Elías | [#104](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/104) | Mergeado y archivado | `openspec/specs/catalogo-libros`, `openspec/specs/movimientos-stock` |
+| `e7-http-libros` | E7 | Elías | [#105](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/105) | Mergeado y archivado | `openspec/specs/casos-de-prueba-libros` |
 | `r2-requiere-rol` | R2 | Bruno | [#93](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/93) | Mergeado y archivado | `openspec/specs/autorizacion` |
 | `r5-roles-con-vigencia` | R5 | Bruno | [#94](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/94) | Mergeado y archivado | `openspec/specs/autorizacion` |
 | `r4-alta-de-personal` | R4 | Bruno | [#96](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/96) | Mergeado y archivado | `openspec/specs/autorizacion` |
@@ -365,14 +366,14 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `06_funcionalidades.md` §Ej. 4 · `05_reglas_de_negocio.md` RN-06, RN-16
 
 ### [E4] `libros-alta-patch-baja` · #23
-- **Estado**: `[x]` mergeado (PR #86; rol ADMIN en PR #104)
+- **Estado**: `[x]` mergeado (PR #86); rol ADMIN en el PR #104
 - **Scope**: `POST /libros` con `stock_inicial` y su movimiento, `PATCH` sólo de título y precio, `DELETE` con borrado lógico (204), ISBN recargable (RN-13), envoltorio en el listado
 - **Dependencias**: E3, R2 · 🔓 Destraba: E7
 - **Governance**: MEDIO
 - **Leer antes**: `07_flujos_principales.md` §Flujo 5 · `05_reglas_de_negocio.md` RN-01, RN-11, RN-13
 
 ### [E5] `reposicion-y-movimientos` · #24
-- **Estado**: `[x]` mergeado (PR #92; rol ADMIN en PR #104)
+- **Estado**: `[x]` mergeado (PR #92); rol ADMIN en el PR #104
 - **Scope**: `POST /libros/{id}/reponer` (200, con su movimiento; 409 si está dado de baja) y `GET /libros/{id}/movimientos`
 - **Dependencias**: E3, R2 · 🔓 Destraba: E7
 - **Governance**: MEDIO
@@ -453,7 +454,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `06_funcionalidades.md` §Casos · `11_entrega_y_despliegue.md`
 
 ### [E7] `solo-agregado-y-http-libros` · #26
-- **Estado**: `[x]` mergeado (PR #80 con C-14 y PR #105 con C-13 y C-16; el change `openspec/changes/e7-http-libros` todavía no está archivado, lo archiva Elías)
+- **Estado**: `[x]` mergeado: C-14 en el PR #80; C-13 y C-16 en el PR #105
 - **Scope**: `test/solo_agregado.sql` (C-14), `.http` de libros (C-13, C-16) y captura de psql
 - **Dependencias**: E4, E5, E6 · 🔓 Destraba: B7
 - **Governance**: BAJO
