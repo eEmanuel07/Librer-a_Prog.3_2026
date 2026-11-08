@@ -29,6 +29,7 @@
 | `b6-migracion-3` | B6 | Belén | [#76](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/76) | Mergeado y archivado (change retroactivo) | `openspec/specs/esquema-base-datos` |
 | `b4-unit-of-work` | B4 | Belén | [#77](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/77) | Mergeado y archivado | `openspec/specs/transacciones` |
 | `b2-lifespan-health` | B2 | Belén | [#81](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/81) | Mergeado y archivado | `openspec/specs/ciclo-de-vida-y-salud` |
+| `b7-readme` | B7 | Belén | [#106](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/106) | En revisión (archivado en su rama) | `openspec/specs/documentacion-entrega` |
 | `h3-auth-registro` | H3 | Hernán | por abrir | En revisión (archivado en su rama) | `openspec/specs/autenticacion` |
 | `h6-auth-logout-yo-cambio` | H6 | Hernán | por abrir | En revisión (archivado en su rama) | `openspec/specs/autenticacion` |
 | `j3-venta-con-stock` | J3 | Joaquín | [#87](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/87) | Mergeado y archivado | `openspec/specs/ventas` |
@@ -84,7 +85,7 @@ FASE 3 · Cierre
 R8 seed.py en la raíz (E1, H1, E3: ya se puede) 🔓 ──┬── H7 auth.http (H3, H4, H6)
                                                      ├── R9 seguridad.http (R2, R3, R5)
                                                      └── J8 ventas.http + C-15 (J3, J4, J5)
-E7 + J8 ── B7 README ──┐
+E7 + J8 ── B7 README [~] ──┐
 toda la fase 2 ── H8 revisión RNF, I1 integración ──┴── E10 .zip de entrega
 ```
 
@@ -478,7 +479,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `06_funcionalidades.md` §Casos · `11_entrega_y_despliegue.md`
 
 ### [B7] `readme-parcial` · #36
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[~]` en revisión (PR #106, change archivado en su rama)
 - **Scope**: `README.md` con integrantes y los pasos desde cero (entorno virtual, dependencias, `.env` y la clave de firma, migraciones, seed, arranque con `uvicorn app.main:app --reload`)
 - **Dependencias**: E7, J8 · 🔓 Destraba: E10
 - **Governance**: BAJO
@@ -500,5 +501,5 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 | 0 · Fundamentos | 9 | 9 | 0 | 0 |
 | 1 · Modelos y migraciones | 4 | 4 | 0 | 0 |
 | 2 · Funcionalidad | 21 | 4 | 0 | 17 |
-| 3 · Cierre | 10 | 0 | 1 | 9 |
-| **Total** | **44** | **17** | **1** | **26** |
+| 3 · Cierre | 10 | 0 | 2 | 8 |
+| **Total** | **44** | **17** | **2** | **25** |
