@@ -25,8 +25,8 @@
 
 ## 2. Actualizar decisión DD-08 (`app/main.py`) y estado de changes en `knowledge-base/`, `AGENTS.md` y `CHANGES.md`
 
-- [ ] 2.1 Actualizar `DD-08` en `knowledge-base/09_decisiones_y_supuestos.md`, `IN-01` en `knowledge-base/10_preguntas_abiertas.md` y la nota en `AGENTS.md`, verificando que quede asentado que `main.py` permanece en `app/main.py` por confirmación del profesor en la clase de consulta del viernes 6/11 (sin checklist de movimiento a la raíz ni pregunta abierta pendiente).
-- [ ] 2.2 Actualizar `CHANGES.md` y verificar la consistencia de la tabla de changes, el árbol, las secciones y el resumen:
+- [x] 2.1 Actualizar `DD-08` en `knowledge-base/09_decisiones_y_supuestos.md`, `IN-01` en `knowledge-base/10_preguntas_abiertas.md` y la nota en `AGENTS.md`, verificando que quede asentado que `main.py` permanece en `app/main.py` por confirmación del profesor en la clase de consulta del viernes 6/11 (sin checklist de movimiento a la raíz ni pregunta abierta pendiente).
+- [x] 2.2 Actualizar `CHANGES.md` y verificar la consistencia de la tabla de changes, el árbol, las secciones y el resumen:
   - En `### Changes de OpenSpec ya creados`: actualizar `b2-lifespan-health` con PR [#81](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/81) (`Mergeado y archivado`) y agregar las filas de `b1-settings` (B1, PR #63 / change en [#82](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/82)), `b3-base-repository` (B3, PR #65 / change en [#82](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/82)) y `b5-paginacion` (B5, PR #66 / change en [#82](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/82));
   - Marcar `B2` como `[x]` mergeado (PR #81) en el árbol de dependencias, en `### [B2] b2-lifespan-health · #31` y en la tabla `## Resumen`;
   - En `### [B7] readme-parcial · #36`: cambiar `uvicorn main:app` por `uvicorn app.main:app --reload` y eliminar el bloque `> **Paso previo a E10 — Mover app/main.py a main.py en la raíz (DD-08):**`.

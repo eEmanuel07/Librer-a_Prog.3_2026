@@ -23,9 +23,12 @@
 | Change | Tarea | Responsable | PR | Estado | Spec que deja |
 |---|---|---|---|---|---|
 | `h4-auth-login` | H4 | Hernán | [#75](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/75) | Mergeado y archivado | `openspec/specs/autenticacion` |
+| `b1-settings` | B1 | Belén | [#63](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/63) · change [#82](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/82) | Mergeado y archivado (change retroactivo) | `openspec/specs/configuracion` |
+| `b3-base-repository` | B3 | Belén | [#65](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/65) · change [#82](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/82) | Mergeado y archivado (change retroactivo) | `openspec/specs/repositorios` |
+| `b5-paginacion` | B5 | Belén | [#66](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/66) · change [#82](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/82) | Mergeado y archivado (change retroactivo) | `openspec/specs/paginacion` |
 | `b6-migracion-3` | B6 | Belén | [#76](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/76) | Mergeado y archivado (change retroactivo) | `openspec/specs/esquema-base-datos` |
 | `b4-unit-of-work` | B4 | Belén | [#77](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/77) | Mergeado y archivado | `openspec/specs/transacciones` |
-| `b2-lifespan-health` | B2 | Belén | por abrir | En revisión (archivado en su rama) | `openspec/specs/ciclo-de-vida-y-salud` |
+| `b2-lifespan-health` | B2 | Belén | [#81](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/81) | Mergeado y archivado | `openspec/specs/ciclo-de-vida-y-salud` |
 | `h3-auth-registro` | H3 | Hernán | por abrir | En revisión (archivado en su rama) | `openspec/specs/autenticacion` |
 | `h6-auth-logout-yo-cambio` | H6 | Hernán | por abrir | En revisión (archivado en su rama) | `openspec/specs/autenticacion` |
 | `j3-venta-con-stock` | J3 | Joaquín | [#87](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/87) | Mergeado y archivado | `openspec/specs/ventas` |
@@ -53,7 +56,7 @@ La fundación de Active Stack (`knowledge-base/`, `CHANGES.md`, `AGENTS.md`, `CL
 
 ```
 FASE 0 · Fundamentos
-B1 Settings [x] ──┬── B2 Lifespan y health [~]
+B1 Settings [x] ──┬── B2 Lifespan y health [x]
                   └── H2 security.py [x] ───────────────┐
 B3 BaseRepository [x] ──┬── E2 SoftDeleteRepository [x] │
                         └── B4 UnitOfWork [x] 🔓 ───────┼──┬── R1 get_usuario_actual ──┬── R2 requiere_rol 🔓
@@ -162,7 +165,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `knowledge-base/08_arquitectura_propuesta.md` §Variables de entorno · `06_funcionalidades.md` §Ej. 1
 
 ### [B2] `b2-lifespan-health` · #31
-- **Estado**: `[~]` en revisión (archivado en su rama)
+- **Estado**: `[x]` mergeado (PR #81)
 - **Scope**:
   - motor (con el tamaño del pool), fábrica de sesiones y hash ficticio creados en el lifespan, en `app.state`; `dispose()` al apagar
   - `get_session` con `expire_on_commit=False`
@@ -474,13 +477,10 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 
 ### [B7] `readme-parcial` · #36
 - **Estado**: `[ ]` pendiente
-- **Scope**: `README.md` con integrantes y los pasos desde cero (entorno virtual, dependencias, `.env` y la clave de firma, migraciones, seed, arranque con `uvicorn main:app`)
+- **Scope**: `README.md` con integrantes y los pasos desde cero (entorno virtual, dependencias, `.env` y la clave de firma, migraciones, seed, arranque con `uvicorn app.main:app --reload`)
 - **Dependencias**: E7, J8 · 🔓 Destraba: E10
 - **Governance**: BAJO
 - **Leer antes**: `11_entrega_y_despliegue.md` §Formato de entrega · `09_decisiones_y_supuestos.md` DD-08
-
-> **Paso previo a E10 — Mover `app/main.py` a `main.py` en la raíz (DD-08):**
-> Una vez mergeados todos los routers de la fase 2 (y antes de cerrar I1, B7 y E10), mover `app/main.py` → `main.py` en la raíz siguiendo el checklist de `knowledge-base/09_decisiones_y_supuestos.md` (DD-08): arranque con `uvicorn main:app`, todos los `import app.modules...` arriba de `app = FastAPI(...)`, actualizar imports de `app.main` en tests/scripts/README y correr la suite de `unittest` y todos los `.http`.
 
 ### [E10] `zip-de-entrega` · #29
 - **Estado**: `[ ]` pendiente
@@ -495,8 +495,8 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 
 | Fase | Tareas | `[x]` | `[~]` | `[ ]` |
 |---|---|---|---|---|
-| 0 · Fundamentos | 9 | 8 | 1 | 0 |
+| 0 · Fundamentos | 9 | 9 | 0 | 0 |
 | 1 · Modelos y migraciones | 4 | 4 | 0 | 0 |
 | 2 · Funcionalidad | 21 | 4 | 0 | 17 |
 | 3 · Cierre | 10 | 0 | 1 | 9 |
-| **Total** | **44** | **16** | **2** | **26** |
+| **Total** | **44** | **17** | **1** | **26** |
