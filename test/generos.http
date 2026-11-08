@@ -5,6 +5,18 @@
 @id_inexistente = 99999
 
 
+### Inicio de sesión: ADMIN (requerido para alta de catálogo, R7)
+# Esperado: 200 con Set-Cookie: access_token=...; HttpOnly
+# @name loginAdmin
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "Admin123!"
+}
+
+
 ### Alta de un genero
 # Esperado: 201 con id y nombre
 # @name generoNuevo
@@ -47,24 +59,24 @@ Content-Type: application/json
 }
 
 
-### Listado paginado (RN-10)
-# Esperado: 200 con una lista de generos
-GET {{host}}/generos/?limit=5&offset=0
+### Listado paginado con envoltorio
+# Esperado: 200 con {items, total, page, size, pages}
+GET {{host}}/generos/?page=1&size=5
 
 
-### Paginacion fuera de rango: offset negativo
+### Paginacion fuera de rango: page 0
 # Esperado: 422
-GET {{host}}/generos/?offset=-1
+GET {{host}}/generos/?page=0
 
 
 ### Libros de un genero
-# Esperado: 200 con los libros del genero
+# Esperado: 200 con envoltorio {items, total, page, size, pages}
 GET {{host}}/generos/{{genero_con_libros}}/libros
 
 
 ### Libros del genero recien creado
-# Esperado: 200 con lista vacia
-GET {{host}}/generos/{{generoNuevo.response.body.id}}/libros
+# Esperado: 200 con items vacio y total 0
+GET {{host}}/generos/{{generoNuevo.response.body.$.id}}/libros
 
 
 ### Libros de un genero que no existe

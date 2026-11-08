@@ -1,12 +1,12 @@
 # datos-iniciales Specification
 
 ## Purpose
-TBD - created by archiving change r8-seed-en-la-raiz. Update Purpose after archive.
+Definir la carga repetible de los datos iniciales del sistema mediante `seed.py` en la raíz del proyecto, garantizando usuarios de prueba, catálogo, clientes, venta inicial con invariante de movimientos de stock y registro en el historial de seguridad.
 
 ## Requirements
 
 ### Requirement: Carga de datos iniciales en la raíz (`seed.py`)
-El sistema SHALL proveer el script `seed.py` en la raíz del proyecto que vacíe todas las tablas y cargue los 5 usuarios iniciales con sus roles vigentes (`admin@example.com`, `admin2@example.com`, `vendedor@example.com`, `ana@example.com`, `nuevo@example.com` con `debe_cambiar_password=True`), 3 editoriales, 3 géneros, 6 autores, 5 libros (`Rayuela` stock 10, `Antología de la literatura fantástica` stock 5, `Ficciones` stock 8, `Respiración artificial` stock 3, `Bestiario` stock 1), 3 clientes (`Lucía Fernández` con perfil, `Tomás Ríos`, `Ana Paz` vinculada a `ana@example.com`), la venta 1 de Lucía por $69000.00 con sus movimientos de stock cumpliendo el invariante `stock = suma(movimientos)` para los cinco libros, y la fila en `evento_seguridad` con actor `SISTEMA` y acción `"Carga de los datos iniciales"`.
+El sistema SHALL proveer el script `seed.py` en la raíz del proyecto que vacíe todas las tablas y cargue los 5 usuarios iniciales con sus roles vigentes, el catálogo inicial (3 editoriales, 3 géneros, 6 autores y 5 libros con movimientos iniciales), los 3 clientes, la venta inicial con sus movimientos cumpliendo el invariante `stock = suma(movimientos)` (RN-11) y la fila en `evento_seguridad` con actor `SISTEMA` (RN-16).
 
 #### Scenario: Invariante de stock y datos completos tras ejecutar el seed
 - **WHEN** se ejecuta `sembrar()` de `seed.py`

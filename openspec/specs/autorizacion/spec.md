@@ -1,7 +1,7 @@
 # autorizacion Specification
 
 ## Purpose
-TBD - created by archiving change r2-requiere-rol. Update Purpose after archive.
+Definir el control de acceso basado en roles vigentes en la base de datos (RN-04), la separación en dos grupos de rutas para el cambio obligatorio de contraseña (RN-06), la gestión de roles con vigencia y autoprotección de administradores (RN-03, RN-05), el alta de personal y la consulta paginada de la bitácora de seguridad (RN-16).
 
 ## Requirements
 

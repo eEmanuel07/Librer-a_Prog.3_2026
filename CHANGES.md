@@ -30,15 +30,15 @@
 | `b4-unit-of-work` | B4 | Belén | [#77](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/77) | Mergeado y archivado | `openspec/specs/transacciones` |
 | `b2-lifespan-health` | B2 | Belén | [#81](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/81) | Mergeado y archivado | `openspec/specs/ciclo-de-vida-y-salud` |
 | `b7-readme` | B7 | Belén | [#106](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/106) | En revisión (archivado en su rama) | `openspec/specs/documentacion-entrega` |
-| `h3-auth-registro` | H3 | Hernán | por abrir | En revisión (archivado en su rama) | `openspec/specs/autenticacion` |
-| `h6-auth-logout-yo-cambio` | H6 | Hernán | por abrir | En revisión (archivado en su rama) | `openspec/specs/autenticacion` |
+| `h3-auth-registro` | H3 | Hernán | [#84](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/84) | Mergeado y archivado | `openspec/specs/autenticacion` |
+| `h6-auth-logout-yo-cambio` | H6 | Hernán | [#85](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/85) | Mergeado y archivado | `openspec/specs/autenticacion` |
 | `j3-venta-con-stock` | J3 | Joaquín | [#87](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/87) | Mergeado y archivado | `openspec/specs/ventas` |
 | `j4-aviso-comprobante` | J4 | Joaquín | [#88](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/88) | Mergeado y archivado | `openspec/specs/ventas` |
 | `j5-detalle-venta-dueno` | J5 | Joaquín | [#89](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/89) | Mergeado y archivado | `openspec/specs/ventas` |
 | `j6-mis-ventas-y-ventas` | J6 | Joaquín | [#90](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/90) | Mergeado y archivado | `openspec/specs/ventas` |
 | `j7-clientes-con-acceso` | J7 | Joaquín | por abrir | En revisión (archivado en su rama) | `openspec/specs/clientes`, `openspec/specs/ventas` |
 | `j8-ventas-http-c15` | J8 | Joaquín | por abrir | En revisión (archivado en su rama) | `openspec/specs/ventas` |
-| `h7-auth-http` | H7 | Hernán | por abrir | En revisión (archivado en su rama) | `test/auth.http` |
+| `h7-auth-http` | H7 | Hernán | [#95](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/95) | Mergeado y archivado | `test/auth.http` |
 
 | `e4-libros-alta-patch-baja` | E4 | Elías | [#86](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/86) | Mergeado y archivado | `openspec/specs/catalogo-libros` |
 | `e5-reposicion-y-movimientos` | E5 | Elías | [#92](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/92) | Mergeado y archivado | `openspec/specs/movimientos-stock` |
@@ -50,6 +50,7 @@
 | `r3-dos-grupos-de-rutas` | R3 | Bruno | [#99](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/99) | Mergeado y archivado | `openspec/specs/autorizacion` |
 | `r8-seed-en-la-raiz` | R8 | Bruno | [#100](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/100) | Mergeado y archivado | `openspec/specs/datos-iniciales` |
 | `r9-seguridad-http` | R9 | Bruno | [#101](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/101) | Mergeado y archivado | `test/seguridad.http` |
+| `h8-revision-rnf` | H8 | Hernán | por abrir | En revisión (archivado en su rama) | `tests/test_rnf.py` |
 
 La fundación de Active Stack (`knowledge-base/`, `CHANGES.md`, `AGENTS.md`, `CLAUDE.md`) quedó mergeada en [#78](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/78). Las demás tareas `[x]` (incluida E6 en [#79](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/79)) no tienen change en `openspec/`.
 
@@ -300,7 +301,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `05_reglas_de_negocio.md` RN-11 · `04_modelo_de_datos.md` §Invariante
 
 ### [H3] `auth-registro` · #39
-- **Estado**: `[~]` en revisión (PR listo)
+- **Estado**: `[x]` mergeado (PR #84)
 - **Scope**: `POST /auth/registro`: hash antes de la transacción; usuario, rol CLIENTE y ficha en **un solo** bloque (RN-02); 409 sin filas sueltas ni apropiarse de la ficha (C-02)
 - **Dependencias**: H1, H2, B4
 - **Governance**: CRITICO
@@ -356,7 +357,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `03_actores_y_roles.md` §RBAC · `06_funcionalidades.md` §Ej. 3 · `10_preguntas_abiertas.md` IN-02
 
 ### [H6] `auth-logout-yo-cambio` · #42
-- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama)
+- **Estado**: `[x]` mergeado (PR #85)
 - **Scope**: `POST /auth/logout` (borra la cookie), `GET /auth/yo` (roles vigentes y los del token), `POST /auth/cambiar-password` (72 bytes; evento RN-16; no emite un token nuevo)
 - **Dependencias**: H4, R4 · 🔓 Destraba: H7
 - **Governance**: CRITICO
@@ -430,7 +431,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `04_modelo_de_datos.md` §Seed data · `03_actores_y_roles.md` §Usuarios iniciales · `10_preguntas_abiertas.md` IN-01
 
 ### [H7] `auth-http` · #43
-- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama)
+- **Estado**: `[x]` mergeado (PR #95)
 - **Scope**: `test/auth.http` con C-01 a C-05
 - **Dependencias**: H3, H4, H6, R8
 - **Governance**: BAJO
@@ -465,7 +466,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `11_entrega_y_despliegue.md`
 
 ### [H8] `revision-rnf` · #44
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama)
 - **Scope**: revisar los requisitos no funcionales: sin secretos, sin carga perezosa, sin 500 por entrada inválida, RN-15
 - **Dependencias**: todas las de la fase 2 · 🔓 Destraba: E10
 - **Governance**: ALTO
