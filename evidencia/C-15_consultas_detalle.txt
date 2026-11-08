@@ -1,0 +1,60 @@
+C-15 - Detalle de una venta con 2 y con 4 renglones: la misma cantidad de consultas
+Fecha: 2026-11-07 - rama feat/j8-ventas-http-c15 - PostgreSQL 16.15 - base nueva con alembic upgrade head y python seed.py
+Servidor: uvicorn app.main:app con SQL_ECHO=true en el .env (la consola muestra cada sentencia que se envía a la base)
+Pasos: test/ventas.http completo (crea la venta de 4 renglones de la sección C-15) y después, con la sesión del VENDEDOR:
+  GET /ventas/1  -> venta 1 de seed.py, 2 renglones: 2 ['Rayuela', 'Ficciones']
+  GET /ventas/6  -> venta de 4 renglones de test/ventas.http: 4 ['Rayuela', 'Ficciones', 'Respiración artificial', 'Antología de la literatura fantástica']
+  (el id 6 es porque las ventas rechazadas de C-11 y C-12 consumen ids de la secuencia sin dejar filas)
+
+Resultado: 4 SELECT en cada petición, tenga 2 o 4 renglones:
+  1) usuario de la cookie (get_usuario_actual)
+  2) roles vigentes en la base (RN-04: decide si es personal o el dueño)
+  3) venta LEFT OUTER JOIN cliente          (joinedload, relación a uno)
+  4) renglon_venta LEFT OUTER JOIN libro    (selectinload de la colección + joinedload del libro)
+Los renglones salen en una sola consulta con IN (venta_id): no hay una consulta por renglón (sin N+1).
+
+================================================================================
+GET /ventas/1  (2 renglones) - 4 SELECT
+================================================================================
+2026-11-07 23:02:18,328 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-11-07 23:02:18,329 INFO sqlalchemy.engine.Engine SELECT usuario.id AS usuario_id, usuario.email AS usuario_email, usuario.nombre AS usuario_nombre, usuario.password_hash AS usuario_password_hash, usuario.activo AS usuario_activo, usuario.debe_cambiar_password AS usuario_debe_cambiar_password 
+FROM usuario 
+WHERE usuario.id = $1::INTEGER
+2026-11-07 23:02:18,329 INFO sqlalchemy.engine.Engine [cached since 8.978s ago] (3,)
+2026-11-07 23:02:18,331 INFO sqlalchemy.engine.Engine SELECT asignacion_rol.rol 
+FROM asignacion_rol 
+WHERE asignacion_rol.usuario_id = $1::INTEGER AND asignacion_rol.revocada_en IS NULL AND (asignacion_rol.vence_en IS NULL OR asignacion_rol.vence_en > $2::TIMESTAMP WITH TIME ZONE) ORDER BY asignacion_rol.rol
+2026-11-07 23:02:18,331 INFO sqlalchemy.engine.Engine [cached since 9.043s ago] (3, datetime.datetime(2026, 11, 7, 23, 2, 18, 330614, tzinfo=datetime.timezone.utc))
+2026-11-07 23:02:18,332 INFO sqlalchemy.engine.Engine SELECT venta.id, venta.cliente_id, venta.fecha, venta.total, cliente_1.id AS id_1, cliente_1.nombre, cliente_1.email, cliente_1.usuario_id 
+FROM venta LEFT OUTER JOIN cliente AS cliente_1 ON cliente_1.id = venta.cliente_id 
+WHERE venta.id = $1::INTEGER
+2026-11-07 23:02:18,332 INFO sqlalchemy.engine.Engine [cached since 8.95s ago] (1,)
+2026-11-07 23:02:18,333 INFO sqlalchemy.engine.Engine SELECT renglon_venta.venta_id AS renglon_venta_venta_id, renglon_venta.id AS renglon_venta_id, renglon_venta.libro_id AS renglon_venta_libro_id, renglon_venta.cantidad AS renglon_venta_cantidad, renglon_venta.precio_unitario AS renglon_venta_precio_unitario, libro_1.id AS libro_1_id, libro_1.isbn AS libro_1_isbn, libro_1.titulo AS libro_1_titulo, libro_1.precio AS libro_1_precio, libro_1.stock AS libro_1_stock, libro_1.editorial_id AS libro_1_editorial_id, libro_1.genero_id AS libro_1_genero_id, libro_1.borrado_en AS libro_1_borrado_en 
+FROM renglon_venta LEFT OUTER JOIN libro AS libro_1 ON libro_1.id = renglon_venta.libro_id 
+WHERE renglon_venta.venta_id IN ($1::INTEGER) ORDER BY renglon_venta.id
+2026-11-07 23:02:18,333 INFO sqlalchemy.engine.Engine [cached since 8.947s ago] (1,)
+2026-11-07 23:02:18,334 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:53370 - "GET /ventas/1 HTTP/1.1" 200 OK
+
+================================================================================
+GET /ventas/6  (4 renglones) - 4 SELECT
+================================================================================
+2026-11-07 23:02:18,865 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-11-07 23:02:18,866 INFO sqlalchemy.engine.Engine SELECT usuario.id AS usuario_id, usuario.email AS usuario_email, usuario.nombre AS usuario_nombre, usuario.password_hash AS usuario_password_hash, usuario.activo AS usuario_activo, usuario.debe_cambiar_password AS usuario_debe_cambiar_password 
+FROM usuario 
+WHERE usuario.id = $1::INTEGER
+2026-11-07 23:02:18,866 INFO sqlalchemy.engine.Engine [cached since 9.515s ago] (3,)
+2026-11-07 23:02:18,868 INFO sqlalchemy.engine.Engine SELECT asignacion_rol.rol 
+FROM asignacion_rol 
+WHERE asignacion_rol.usuario_id = $1::INTEGER AND asignacion_rol.revocada_en IS NULL AND (asignacion_rol.vence_en IS NULL OR asignacion_rol.vence_en > $2::TIMESTAMP WITH TIME ZONE) ORDER BY asignacion_rol.rol
+2026-11-07 23:02:18,868 INFO sqlalchemy.engine.Engine [cached since 9.58s ago] (3, datetime.datetime(2026, 11, 7, 23, 2, 18, 867591, tzinfo=datetime.timezone.utc))
+2026-11-07 23:02:18,869 INFO sqlalchemy.engine.Engine SELECT venta.id, venta.cliente_id, venta.fecha, venta.total, cliente_1.id AS id_1, cliente_1.nombre, cliente_1.email, cliente_1.usuario_id 
+FROM venta LEFT OUTER JOIN cliente AS cliente_1 ON cliente_1.id = venta.cliente_id 
+WHERE venta.id = $1::INTEGER
+2026-11-07 23:02:18,869 INFO sqlalchemy.engine.Engine [cached since 9.487s ago] (6,)
+2026-11-07 23:02:18,870 INFO sqlalchemy.engine.Engine SELECT renglon_venta.venta_id AS renglon_venta_venta_id, renglon_venta.id AS renglon_venta_id, renglon_venta.libro_id AS renglon_venta_libro_id, renglon_venta.cantidad AS renglon_venta_cantidad, renglon_venta.precio_unitario AS renglon_venta_precio_unitario, libro_1.id AS libro_1_id, libro_1.isbn AS libro_1_isbn, libro_1.titulo AS libro_1_titulo, libro_1.precio AS libro_1_precio, libro_1.stock AS libro_1_stock, libro_1.editorial_id AS libro_1_editorial_id, libro_1.genero_id AS libro_1_genero_id, libro_1.borrado_en AS libro_1_borrado_en 
+FROM renglon_venta LEFT OUTER JOIN libro AS libro_1 ON libro_1.id = renglon_venta.libro_id 
+WHERE renglon_venta.venta_id IN ($1::INTEGER) ORDER BY renglon_venta.id
+2026-11-07 23:02:18,870 INFO sqlalchemy.engine.Engine [cached since 9.484s ago] (6,)
+2026-11-07 23:02:18,871 INFO sqlalchemy.engine.Engine COMMIT
+INFO:     127.0.0.1:53376 - "GET /ventas/6 HTTP/1.1" 200 OK

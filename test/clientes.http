@@ -1,21 +1,120 @@
 @host = http://localhost:8000
+@contentType = application/json
 
-# Datos iniciales del script de carga:
-#   cliente 1 = Lucía Fernández (ya tiene perfil) · cliente 2 = Tomás Ríos (sin perfil)
+# ==============================================================================
+# CLIENTES (J7) - todas las rutas son del personal: VENDEDOR o ADMIN (pág. 18)
+# Antes de ejecutar este archivo, correr desde la raíz:
+#   alembic upgrade head
+#   python seed.py
+#
+# Datos de seed.py que usa este archivo:
+#   cliente 1 = Lucía Fernández (con perfil, sin usuario, una venta de 2 renglones)
+#   cliente 2 = Tomás Ríos (sin perfil, sin usuario)
+#   cliente 3 = Ana Paz (sin perfil, con el usuario ana@example.com, id 4)
+#
+# Cada login tiene # @name y cada pedido usa # @no-cookie-jar con el encabezado
+# Cookie: {{loginX.response.headers.Set-Cookie}} para mantener varias sesiones abiertas.
+# ==============================================================================
+
 @cliente_con_perfil = 1
 @cliente_sin_perfil = 2
+@cliente_con_usuario = 3
 @id_inexistente = 99999
 
 
+### Inicio de sesión: VENDEDOR (id 3)
+# Esperado: 200 con Set-Cookie: access_token=...; HttpOnly
+# @name loginVendedor
+# @no-cookie-jar
+POST {{host}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "vendedor@example.com",
+  "password": "Vendedor123!"
+}
+
+
+### Inicio de sesión: ADMIN (id 1)
+# Esperado: 200 con Set-Cookie: access_token=...; HttpOnly
+# @name loginAdmin
+# @no-cookie-jar
+POST {{host}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "admin@example.com",
+  "password": "Admin123!"
+}
+
+
+### Inicio de sesión: CLIENTE Ana Paz (id 4)
+# Esperado: 200 con Set-Cookie: access_token=...; HttpOnly
+# @name loginAna
+# @no-cookie-jar
+POST {{host}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "ana@example.com",
+  "password": "Cliente123!"
+}
+
+
+# ------------------------------------------------------------------------------
+# Quién puede usar el módulo
+# ------------------------------------------------------------------------------
+
+### Sin sesión
+# Esperado: 401 {"detail": "No autenticado"}
+# @no-cookie-jar
+GET {{host}}/clientes/{{cliente_con_perfil}}
+
+
+### Un CLIENTE no ve fichas de clientes (ni siquiera la suya)
+# Esperado: 403 {"detail": "No tiene permisos para realizar esta acción"}
+# @no-cookie-jar
+GET {{host}}/clientes/{{cliente_con_usuario}}
+Cookie: {{loginAna.response.headers.Set-Cookie}}
+
+
+### Un CLIENTE no da de alta clientes
+# Esperado: 403 (el rol se lee de la base en cada petición, RN-04)
+# @no-cookie-jar
+POST {{host}}/clientes/
+Content-Type: {{contentType}}
+Cookie: {{loginAna.response.headers.Set-Cookie}}
+
+{
+  "nombre": "Intento de Ana",
+  "email": "intento@example.com"
+}
+
+
+### El ADMIN también puede (VENDEDOR o ADMIN)
+# Esperado: 200 con la ficha de Lucía y su perfil
+# @no-cookie-jar
+GET {{host}}/clientes/{{cliente_con_perfil}}
+Cookie: {{loginAdmin.response.headers.Set-Cookie}}
+
+
+# ------------------------------------------------------------------------------
+# Alta, detalle y PATCH (VENDEDOR)
+# ------------------------------------------------------------------------------
+
 ### C-01 · Parámetro de ruta que no es entero
 # Esperado: 422 sin ejecutar el handler
+# @no-cookie-jar
 GET {{host}}/clientes/abc
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
 
 
 ### C-02 · Email repetido (tomas@example.com ya existe en los datos iniciales)
-# Esperado: 409 con mensaje propio. Lo rechaza el UNIQUE de la base.
+# Esperado: 409 «El email ya está en uso». Lo rechaza el UNIQUE de la base.
+# @no-cookie-jar
 POST {{host}}/clientes/
-Content-Type: application/json
+Content-Type: {{contentType}}
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
 
 {
   "nombre": "Otro Tomás",
@@ -24,9 +123,11 @@ Content-Type: application/json
 
 
 ### Email repetido en mayúsculas (el email se normaliza a minúsculas al entrar)
-# Esperado: 409 con el mismo mensaje propio de email repetido ("El email ya está en uso")
+# Esperado: 409 «El email ya está en uso»
+# @no-cookie-jar
 POST {{host}}/clientes/
-Content-Type: application/json
+Content-Type: {{contentType}}
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
 
 {
   "nombre": "Tomás en mayúsculas",
@@ -36,8 +137,10 @@ Content-Type: application/json
 
 ### Email inválido
 # Esperado: 422 (EmailStr rechaza el formato)
+# @no-cookie-jar
 POST {{host}}/clientes/
-Content-Type: application/json
+Content-Type: {{contentType}}
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
 
 {
   "nombre": "Sin Email",
@@ -47,8 +150,10 @@ Content-Type: application/json
 
 ### El id no viaja en el alta
 # Esperado: 422 (extra_forbidden)
+# @no-cookie-jar
 POST {{host}}/clientes/
-Content-Type: application/json
+Content-Type: {{contentType}}
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
 
 {
   "id": 50,
@@ -57,10 +162,26 @@ Content-Type: application/json
 }
 
 
-### Nombre vacio
-# Esperado: 422
+### El usuario_id tampoco: lo pone el auto-registro (RN-02), no el personal
+# Esperado: 422 (extra_forbidden)
+# @no-cookie-jar
 POST {{host}}/clientes/
-Content-Type: application/json
+Content-Type: {{contentType}}
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
+
+{
+  "nombre": "Con Usuario",
+  "email": "conusuario@example.com",
+  "usuario_id": 3
+}
+
+
+### Nombre vacío
+# Esperado: 422
+# @no-cookie-jar
+POST {{host}}/clientes/
+Content-Type: {{contentType}}
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
 
 {
   "nombre": "",
@@ -69,10 +190,12 @@ Content-Type: application/json
 
 
 ### Alta de un cliente nuevo
-# Esperado: 201 con id, nombre, email y perfil en null
+# Esperado: 201 con id, nombre, email, usuario_id null y perfil null
 # @name clienteNuevo
+# @no-cookie-jar
 POST {{host}}/clientes/
-Content-Type: application/json
+Content-Type: {{contentType}}
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
 
 {
   "nombre": "Pedro Gómez",
@@ -81,24 +204,32 @@ Content-Type: application/json
 
 
 ### Detalle del cliente recién creado (sin perfil)
-# Esperado: 200 con perfil en null
-GET {{host}}/clientes/{{clienteNuevo.response.body.id}}
+# Esperado: 200 con usuario_id null y perfil null
+# @no-cookie-jar
+GET {{host}}/clientes/{{clienteNuevo.response.body.$.id}}
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
 
 
-### Detalle del cliente 1 (con perfil)
-# Esperado: 200 con perfil (telefono, direccion)
-GET {{host}}/clientes/{{cliente_con_perfil}}
+### Detalle de Ana Paz: cliente con acceso web
+# Esperado: 200 con "usuario_id": 4
+# @no-cookie-jar
+GET {{host}}/clientes/{{cliente_con_usuario}}
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
 
 
 ### Detalle de un cliente que no existe
 # Esperado: 404 {"detail": "El cliente no existe"}
+# @no-cookie-jar
 GET {{host}}/clientes/{{id_inexistente}}
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
 
 
-### PATCH parcial: solo el nombre
+### PATCH parcial: sólo el nombre
 # Esperado: 200, el email queda igual
-PATCH {{host}}/clientes/{{clienteNuevo.response.body.id}}
-Content-Type: application/json
+# @no-cookie-jar
+PATCH {{host}}/clientes/{{clienteNuevo.response.body.$.id}}
+Content-Type: {{contentType}}
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
 
 {
   "nombre": "Pedro Gomez"
@@ -106,9 +237,11 @@ Content-Type: application/json
 
 
 ### PATCH con email repetido
-# Esperado: 409 con mensaje propio (unicidad en la base, no se consulta antes)
-PATCH {{host}}/clientes/{{clienteNuevo.response.body.id}}
-Content-Type: application/json
+# Esperado: 409 «El email ya está en uso» (unicidad en la base, no se consulta antes)
+# @no-cookie-jar
+PATCH {{host}}/clientes/{{clienteNuevo.response.body.$.id}}
+Content-Type: {{contentType}}
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
 
 {
   "email": "lucia@example.com"
@@ -117,28 +250,50 @@ Content-Type: application/json
 
 ### PATCH con un campo en null
 # Esperado: 422 (se puede omitir, pero no mandar null)
-PATCH {{host}}/clientes/{{clienteNuevo.response.body.id}}
-Content-Type: application/json
+# @no-cookie-jar
+PATCH {{host}}/clientes/{{clienteNuevo.response.body.$.id}}
+Content-Type: {{contentType}}
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
 
 {
   "nombre": null
 }
 
 
+### PATCH que intenta vincular un usuario
+# Esperado: 422 (extra_forbidden)
+# @no-cookie-jar
+PATCH {{host}}/clientes/{{clienteNuevo.response.body.$.id}}
+Content-Type: {{contentType}}
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
+
+{
+  "usuario_id": 4
+}
+
+
 ### PATCH de un cliente que no existe
 # Esperado: 404
+# @no-cookie-jar
 PATCH {{host}}/clientes/{{id_inexistente}}
-Content-Type: application/json
+Content-Type: {{contentType}}
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
 
 {
   "nombre": "No Existe"
 }
 
 
+# ------------------------------------------------------------------------------
+# Perfil
+# ------------------------------------------------------------------------------
+
 ### C-03 · El cliente 1 ya tiene perfil en los datos iniciales
-# Esperado: 409 con mensaje propio. Lo rechaza el UNIQUE de cliente_id (RN-09).
+# Esperado: 409 «El cliente ya tiene un perfil». Lo rechaza el UNIQUE de cliente_id.
+# @no-cookie-jar
 POST {{host}}/clientes/{{cliente_con_perfil}}/perfil
-Content-Type: application/json
+Content-Type: {{contentType}}
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
 
 {
   "telefono": "261-555-9999",
@@ -148,9 +303,10 @@ Content-Type: application/json
 
 ### Perfil para el cliente 2 (que no tiene perfil)
 # Esperado: 201 con id, cliente_id, telefono y direccion
-# @name perfilNuevo
+# @no-cookie-jar
 POST {{host}}/clientes/{{cliente_sin_perfil}}/perfil
-Content-Type: application/json
+Content-Type: {{contentType}}
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
 
 {
   "telefono": "11-555-0202",
@@ -160,8 +316,10 @@ Content-Type: application/json
 
 ### El perfil de un cliente que no existe
 # Esperado: 404 (se confirma la existencia antes de insertar)
+# @no-cookie-jar
 POST {{host}}/clientes/{{id_inexistente}}/perfil
-Content-Type: application/json
+Content-Type: {{contentType}}
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
 
 {
   "telefono": "000-000",
@@ -171,36 +329,54 @@ Content-Type: application/json
 
 ### Detalle del cliente 2 con su perfil recién creado
 # Esperado: 200 con perfil cargado
+# @no-cookie-jar
 GET {{host}}/clientes/{{cliente_sin_perfil}}
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
 
 
-### Ventas del cliente 1 (los datos iniciales cargan una venta con 2 renglones)
-# Esperado: 200 con la venta, cliente y renglones (titulo, cantidad, precio_unitario, subtotal)
-# Con SQL_ECHO=true se ven siempre 3 SELECT, tenga 1 o muchos renglones:
-#   1) cliente (chequeo de existencia)   2) venta JOIN cliente   3) renglon_venta JOIN libro
+# ------------------------------------------------------------------------------
+# Ventas de un cliente, con el envoltorio {items, total, page, size, pages}
+# ------------------------------------------------------------------------------
+
+### Ventas del cliente 1 (seed.py carga una venta con 2 renglones)
+# Esperado: 200 {"items": [venta con cliente y renglones], "total": 1, "page": 1, "size": 20, "pages": 1}
+# Con SQL_ECHO=true se ve siempre la misma cantidad de consultas, tenga 1 o muchos renglones:
+#   usuario de la cookie, roles, cliente (404), conteo, venta JOIN cliente, renglones JOIN libro
+# @no-cookie-jar
 GET {{host}}/clientes/{{cliente_con_perfil}}/ventas
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
 
 
 ### Ventas de un cliente sin ventas
-# Esperado: 200 con lista vacia
-GET {{host}}/clientes/{{clienteNuevo.response.body.id}}/ventas
+# Esperado: 200 {"items": [], "total": 0, "page": 1, "size": 20, "pages": 1}
+# @no-cookie-jar
+GET {{host}}/clientes/{{clienteNuevo.response.body.$.id}}/ventas
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
 
 
 ### Ventas de un cliente que no existe
-# Esperado: 404
+# Esperado: 404 {"detail": "El cliente no existe"}
+# @no-cookie-jar
 GET {{host}}/clientes/{{id_inexistente}}/ventas
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
 
 
-### Paginación de las ventas (RN-10)
-# Esperado: 200 con la lista paginada
-GET {{host}}/clientes/{{cliente_con_perfil}}/ventas?limit=1&offset=0
+### Página más allá de la última
+# Esperado: 422 {"detail": "La página 2 no existe: hay 1"}
+# @no-cookie-jar
+GET {{host}}/clientes/{{cliente_con_perfil}}/ventas?page=2
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
 
 
-### limit fuera de rango
-# Esperado: 422 (limit va de 1 a 100)
-GET {{host}}/clientes/{{cliente_con_perfil}}/ventas?limit=101
+### size fuera de rango
+# Esperado: 422 (size va de 1 a 100)
+# @no-cookie-jar
+GET {{host}}/clientes/{{cliente_con_perfil}}/ventas?size=101
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}
 
 
-### offset negativo
-# Esperado: 422 (offset desde 0)
-GET {{host}}/clientes/{{cliente_con_perfil}}/ventas?offset=-1
+### page en 0
+# Esperado: 422 (page empieza en 1)
+# @no-cookie-jar
+GET {{host}}/clientes/{{cliente_con_perfil}}/ventas?page=0
+Cookie: {{loginVendedor.response.headers.Set-Cookie}}

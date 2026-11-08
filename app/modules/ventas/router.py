@@ -1,6 +1,6 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 
-from app.core.dependencies import get_usuario_actual
+from app.core.dependencies import get_usuario_actual, requiere_rol
 from app.core.errors import Conflicto, NoEncontrado, SinPermiso
 from app.core.paginacion import Pagina, ParametrosPagina, parametros_pagina
 from app.modules.usuarios.models import Usuario
@@ -20,9 +20,10 @@ async def crear_venta(
     datos: VentaCreate,
     tareas: BackgroundTasks,
     uow: VentaUnitOfWork = Depends(get_ventas_uow),
-    # Quien registra la venta queda en cada movimiento de stock. Recibe la misma
-    # sesión que el Unit of Work (get_session se resuelve una vez por petición).
-    usuario: Usuario = Depends(get_usuario_actual),
+    # Sólo el personal registra ventas (403 para un cliente). Quien la registra
+    # queda en cada movimiento de stock. requiere_rol usa la misma sesión que el
+    # Unit of Work (get_session se resuelve una vez por petición).
+    usuario: Usuario = Depends(requiere_rol("VENDEDOR", "ADMIN")),
 ) -> VentaRead:
     try:
         venta = await service.crear_venta(uow, datos, usuario.id)
@@ -39,13 +40,9 @@ async def crear_venta(
 async def listar_ventas(
     params: ParametrosPagina = Depends(parametros_pagina),  # page y size: 422 si no cumplen
     uow: VentaUnitOfWork = Depends(get_ventas_uow),
-    # VENDEDOR o ADMIN: hasta que esté requiere_rol (R2) lo controla el service (403).
-    usuario: Usuario = Depends(get_usuario_actual),
+    _personal: Usuario = Depends(requiere_rol("VENDEDOR", "ADMIN")),
 ) -> Pagina[VentaResumen]:
-    try:
-        return await service.listar_ventas(uow, params, usuario)
-    except SinPermiso as error:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=error.mensaje) from None
+    return await service.listar_ventas(uow, params)
 
 
 @router.get("/{venta_id}", response_model=VentaRead)

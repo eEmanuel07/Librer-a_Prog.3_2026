@@ -73,6 +73,10 @@ class ClienteRead(SQLModel):
     id: int
     nombre: str
     email: str
+    # Usuario web asociado: null si el cliente no tiene acceso por la web. Es
+    # sólo de lectura: lo pone el auto-registro (RN-02); el alta y el PATCH del
+    # personal no lo aceptan (extra="forbid" -> 422).
+    usuario_id: int | None
     perfil: PerfilRead | None  # el perfil es opcional (uno a uno)
 
     @classmethod
@@ -81,5 +85,6 @@ class ClienteRead(SQLModel):
             id=cliente.id,
             nombre=cliente.nombre,
             email=cliente.email,
+            usuario_id=cliente.usuario_id,
             perfil=PerfilRead.desde_modelo(cliente.perfil) if cliente.perfil else None,
         )
