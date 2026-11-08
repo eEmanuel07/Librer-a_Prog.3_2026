@@ -5,7 +5,7 @@
 
 ## 1. Reescribir `README.md` del parcial revisado contra el código real de `main`
 
-- [ ] 1.1 Actualizar el encabezado, integrantes y pasos desde cero en `README.md` y verificar que no quede ninguna referencia a `python -m scripts.seed`, `DATABASE_URL` ni el contenido de `.env`:
+- [x] 1.1 Actualizar el encabezado, integrantes y pasos desde cero en `README.md` y verificar que no quede ninguna referencia a `python -m scripts.seed`, `DATABASE_URL` ni el contenido de `.env`:
   - Título del parcial y descripción de las capacidades (capítulos 1 a 6);
   - Nombres y apellidos de los 5 integrantes: Belén Calvo, Elías Tello, Hernán González, Bruno Fiouchetta, Joaquín Moran;
   - Requisitos técnicos (Python 3.12+ con versiones mínimas de `requirements.txt` y Docker para PostgreSQL 16);
@@ -15,7 +15,7 @@
   - Migraciones con `alembic upgrade head` (las 4 migraciones de `migrations/versions/`);
   - Carga de datos iniciales desde la raíz con `python seed.py` y tabla de los 5 usuarios iniciales (`admin@example.com`, `admin2@example.com`, `vendedor@example.com`, `ana@example.com`, `nuevo@example.com` con su rol vigente y `debe_cambiar_password`, indicando que las contraseñas de prueba viven sólo en `seed.py`);
   - Arranque del servidor con `uvicorn app.main:app --reload`.
-- [ ] 1.2 Actualizar las secciones de pruebas, estructura, arquitectura en capas, endpoints y `evidencia/` en `README.md` y verificar cada ruta y nombre de archivo contra el árbol real de `main`:
+- [x] 1.2 Actualizar las secciones de pruebas, estructura, arquitectura en capas, endpoints y `evidencia/` en `README.md` y verificar cada ruta y nombre de archivo contra el árbol real de `main`:
   - Cómo correr la suite automática con `unittest`: `python -m unittest discover -s tests`;
   - Cómo correr los archivos `.http` (extensión REST Client de VS Code, `python seed.py` previo, sesiones múltiples con `# @name` y `# @no-cookie-jar`) y `test/solo_agregado.sql` con `psql`, con tabla que detalle qué casos de la consigna cubre cada archivo (`auth.http` C-01..C-05, `seguridad.http` C-06..C-09, `ventas.http`, `libros.http`, `solo_agregado.sql` C-14, `clientes.http`, `editoriales.http`, `generos.http`, `autores.http`, `health.http`);
   - Árbol de estructura del proyecto (`app/main.py`, `seed.py`, `app/core/*`, `app/modules/<módulo>/*` con `unit_of_work.py`, `app/modules/health/router.py`, `migrations/`, `test/`, `tests/`, `evidencia/`) sin `app/core/uow.py` ni `scripts/seed.py`;
