@@ -1,0 +1,15 @@
+D-04 · Después de reiniciar el servicio en EasyPanel (equivale a docker rm -f libreria y el mismo docker run)
+Fecha: 2026-11-08 19:30 -0300 · Desde: PC de Elías, fuera del VPS
+Esperado: vuelve a estar sano y los datos siguen (la venta 2, registrada en D-03 antes del reinicio, sigue en la base)
+
+$ curl -s -w '\n%{http_code}\n' https://grupo2-elias-apilibreria.ugpvou.easypanel.host/health/ready
+{"estado":"listo","base":"ok"}
+200
+
+$ curl -s -w '\n%{http_code}\n' https://grupo2-elias-apilibreria.ugpvou.easypanel.host/ventas/2
+{"id":2,"fecha":"2026-11-08T22:26:21.724967Z","total":"77000.00","cliente":{"id":2,"nombre":"Tomás Ríos","email":"tomas@example.com"},"renglones":[{"libro_id":1,"titulo":"Rayuela","cantidad":2,"precio_unitario":"25000.00","subtotal":"50000.00"},{"libro_id":4,"titulo":"Respiración artificial","cantidad":1,"precio_unitario":"27000.00","subtotal":"27000.00"}]}
+200
+
+$ curl -s -w '\n%{http_code}\n' https://grupo2-elias-apilibreria.ugpvou.easypanel.host/libros/1
+{"id":1,"isbn":"978-950-00-0001-1","titulo":"Rayuela","precio":"25000.00","stock":12,"editorial":{"id":1,"nombre":"Sudamericana","pais":"Argentina"},"genero":{"id":1,"nombre":"Novela"},"autores":[{"autor":{"id":1,"nombre":"Julio Cortázar","nacionalidad":"Argentina"},"rol":"autor","orden":1}]}
+200

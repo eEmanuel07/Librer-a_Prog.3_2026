@@ -1,141 +1,101 @@
 # Despliegue en el VPS — TP de los capítulos 1 a 4
 
-> **Borrador.** Lo marcado con ⏳ se completa al desplegar en el VPS (E8).
-
-Este documento describe cómo está desplegado el TP de los capítulos 1 a 4 (la librería, tal como se entregó en el tag `entrega-final`) en el VPS de la cátedra, con Docker y sin Docker Compose (Ej. 10 del parcial).
+Este documento describe cómo está desplegado el TP de los capítulos 1 a 4 (la librería, tal como se entregó en el tag `entrega-final`) en el VPS, para el Ej. 10 del parcial.
 
 ## Dónde está
 
 | | |
 |---|---|
-| **URL pública** | ⏳ `http://<IP_O_DOMINIO>:<PUERTO>` |
-| **Día y hora del despliegue** | ⏳ `AAAA-MM-DD HH:MM` (hora de Argentina) |
-| **Rama y commit desplegados** | `despliegue` · ⏳ commit |
+| **URL pública** | https://grupo2-elias-apilibreria.ugpvou.easypanel.host |
+| **Día y hora del despliegue** | 8 de noviembre de 2026, 19:04 (hora de Argentina) |
+| **Rama y commit desplegados** | `despliegue` · `6581fcb` (Merge pull request #74) |
+| **Proyecto y servicios en EasyPanel** | proyecto `grupo2-elias`: servicio App `apilibreria` y servicio Postgres `dblibreria` |
 | **Responsable** | Elías Tello |
 
 Para comprobar que está en línea:
 
-- `GET <URL>/health/ready` → 200
-- `GET <URL>/libros/` → 200 con la lista de libros
+- `GET https://grupo2-elias-apilibreria.ugpvou.easypanel.host/health/ready` → 200 con `{"estado":"listo","base":"ok"}`
+- `GET https://grupo2-elias-apilibreria.ugpvou.easypanel.host/libros/` → 200 con la lista de libros
 
 El despliegue queda en línea hasta que se publiquen las notas.
+
+## Cómo se despliega: EasyPanel en lugar de `docker run`
+
+La consigna pide correr la imagen con `docker run`. **El profesor autorizó usar EasyPanel**, con la forma enseñada en clase, y probar él mismo que el despliegue funcione. El VPS es uno de Hostinger que comparte un grupo de alumnos del curso y que se administra con EasyPanel.
+
+EasyPanel hace lo mismo que los comandos de la consigna, desde el panel:
+
+| Consigna | En EasyPanel |
+|---|---|
+| `docker build -t libreria .` | El servicio App construye la imagen con el `Dockerfile` de la rama `despliegue` en cada implementación |
+| `docker run ... --env-file <archivo>` | Las variables del servicio (*Entorno*) entran al contenedor al arrancar; no están en la imagen ni en el repositorio |
+| `-p <puerto>:8000` | El dominio del servicio apunta al puerto **8000** del contenedor, a través del proxy de EasyPanel (HTTPS) |
+| `--restart unless-stopped` | EasyPanel vuelve a levantar el contenedor si se cae o se reinicia el servidor |
+| `docker exec libreria ...` | La **Consola** del servicio, que abre una terminal dentro del contenedor |
+| `docker rm -f libreria` y el mismo `docker run` | **Reiniciar** o **Implementar** el servicio |
+| La base que ya tiene el servidor | Un servicio Postgres en el mismo proyecto, con sus datos en un volumen propio |
+
+La imagen es la misma: el `Dockerfile` de la rama no cambió.
 
 ## Qué se despliega
 
 - El TP de los capítulos 1 a 4 **tal como se entregó** (tag `entrega-final`). La rama `despliegue` sale de ese tag y no se mezcla con `main`, donde está el parcial.
 - Al TP sólo se le agregaron:
-  - `Dockerfile`: imagen sobre `python:3.12-alpine`, usuario sin privilegios, `HEALTHCHECK` sobre `/health/ready` y, al arrancar, `alembic upgrade head` y después `uvicorn`.
+  - `Dockerfile`: imagen sobre `python:3.12-alpine`, usuario sin privilegios, `HEALTHCHECK` sobre `/health/ready` y, al arrancar, `alembic upgrade head` y después `uvicorn` en el puerto 8000.
   - `.dockerignore`: deja afuera `.env`, `.venv`, `.git`, `__pycache__`, `test/` y `evidencia/`.
   - En `env.example`, la sección del contenedor, con la forma de `DATABASE_URL` y sin valores reales.
 
 ### Cambios al TP para que corra en el contenedor
 
-**Ninguno.** La lógica del TP no se tocó: `git diff entrega-final despliegue` muestra sólo los archivos de arriba y la evidencia.
+**Ninguno.** La lógica del TP no se tocó: `git diff entrega-final despliegue` muestra sólo los archivos de arriba, la evidencia y este documento.
 
-⏳ Si en el VPS aparece algún defecto propio del TP que impida arrancar, se corrige en la rama `despliegue` y se anota acá: qué fallaba, qué se cambió y en qué commit.
+## Pasos del despliegue
 
-## Requisitos del servidor
+1. **Proyecto:** en EasyPanel, un proyecto `grupo2-elias`.
+2. **Base:** un servicio **Postgres** `dblibreria`. EasyPanel genera el usuario, la contraseña y el host interno (`grupo2-elias_dblibreria`, puerto 5432).
+3. **Aplicación:** un servicio **App** `apilibreria`:
+   - **Origen:** GitHub, repositorio `eEmanuel07/Librer-a_Prog.3_2026`, rama `despliegue`.
+   - **Compilación:** Dockerfile, archivo `Dockerfile`.
+   - **Entorno** (sólo los nombres; los valores no se publican):
+     - `DATABASE_URL`, con el driver asincrónico, de la forma `postgresql+asyncpg://USUARIO:CONTRASEÑA@grupo2-elias_dblibreria:5432/BASE`. Es la URL de conexión interna del servicio Postgres, cambiando el `postgres://` del principio por `postgresql+asyncpg://`.
+     - `SQL_ECHO=false`.
+   - **Dominio:** el que asigna EasyPanel, con **puerto 8000**.
+4. **Implementar.** En los registros del servicio se ven las migraciones aplicadas y `Uvicorn running on http://0.0.0.0:8000`; el chequeo de salud responde 200.
+5. **Datos iniciales**, una sola vez, con el comando del README del TP en la **Consola** del servicio:
 
-- Docker instalado (⏳ versión: `docker --version`).
-- PostgreSQL con la base que provee la cátedra. La base **no** va en el contenedor.
-- El puerto asignado por la cátedra (⏳ `<PUERTO>`), abierto desde afuera.
+   ```bash
+   python -m scripts.seed
+   ```
 
-## Archivo de variables
+   > El seed vacía las tablas antes de cargar. **No** se vuelve a correr al actualizar: los datos viven en la base y se conservan.
 
-El contenedor no lee un `.env`: recibe las variables con `--env-file` desde un archivo que vive **en el servidor**, fuera del repositorio y de la imagen.
+### Lo que se corrigió durante el despliegue
 
-- **Archivo:** `~/libreria.env`, con permisos `600` (sólo lo lee el usuario del servidor).
-- **Variables** (sólo los nombres; los valores no se publican):
-  - `DATABASE_URL`: con el driver asincrónico, de la forma `postgresql+asyncpg://USUARIO:CONTRASEÑA@HOST:5432/BASE`.
-  - `SQL_ECHO=false`.
-- **`HOST`:** dentro del contenedor, `localhost` es el propio contenedor. Si PostgreSQL corre en el mismo servidor, se usa `host.docker.internal` (y el `docker run` lleva `--add-host`, ver abajo). Si la cátedra da otra dirección, va esa.
+Problemas de configuración, no del TP:
 
-```bash
-chmod 600 ~/libreria.env
-```
-
-## Construcción y arranque
-
-La imagen se construye **en el servidor**, a partir de la rama `despliegue` (el repositorio es público).
-
-```bash
-git clone --branch despliegue --single-branch https://github.com/eEmanuel07/Librer-a_Prog.3_2026.git libreria
-```
-
-```bash
-cd libreria
-```
-
-```bash
-docker build -t libreria .
-```
-
-```bash
-docker run -d --name libreria -p <PUERTO>:8000 --restart unless-stopped --add-host=host.docker.internal:host-gateway --env-file ~/libreria.env libreria
-```
-
-- `-p <PUERTO>:8000`: el puerto público asignado por la cátedra apunta al 8000 del contenedor, donde escucha uvicorn.
-- `--restart unless-stopped`: el contenedor vuelve a arrancar si se cae o si se reinicia el servidor.
-- `--add-host=host.docker.internal:host-gateway`: sólo hace falta si PostgreSQL corre en el mismo servidor.
-- `--env-file ~/libreria.env`: las variables entran al correr el contenedor; la imagen no tiene ninguna dirección de base ni contraseña.
-
-### Datos iniciales
-
-Una sola vez, en el primer despliegue, con el comando del README del TP ejecutado dentro del contenedor:
-
-```bash
-docker exec libreria python -m scripts.seed
-```
-
-> El seed vacía las tablas antes de cargar. **No** se vuelve a correr al actualizar: los datos viven en la base del servidor y se conservan.
-
-### Comprobación
-
-```bash
-docker ps
-```
-
-```bash
-docker logs libreria
-```
-
-El contenedor tiene que figurar como `healthy`, y en los logs tienen que verse las migraciones aplicadas al arrancar y uvicorn escuchando en `0.0.0.0:8000`.
+- Sin `DATABASE_URL` el contenedor termina con error, como corresponde (D-05).
+- Con el host de la base equivocado: `Name does not resolve`. Se usó el host interno del servicio Postgres.
+- Con el dominio en el puerto 80 por defecto, el proxy respondía 502. Se configuró el puerto 8000.
 
 ## Cómo se actualiza
 
-Cuando cambia el código de la rama `despliegue`: se construye la imagen de nuevo, se elimina el contenedor y se lo vuelve a correr con el mismo comando.
+Cuando cambia el código de la rama `despliegue`, se toca **Implementar** en el servicio `apilibreria`: EasyPanel trae el último commit, construye la imagen de nuevo, elimina el contenedor anterior y levanta uno nuevo con las mismas variables.
 
-```bash
-cd libreria && git pull
-```
-
-```bash
-docker build -t libreria .
-```
-
-```bash
-docker rm -f libreria
-```
-
-```bash
-docker run -d --name libreria -p <PUERTO>:8000 --restart unless-stopped --add-host=host.docker.internal:host-gateway --env-file ~/libreria.env libreria
-```
-
-Los datos **no se pierden**, porque viven en la base del servidor y no en el contenedor. Al arrancar, `alembic upgrade head` no repite las migraciones ya aplicadas (D-04).
+Los datos **no se pierden**, porque viven en el servicio Postgres y no en el contenedor de la aplicación. Al arrancar, `alembic upgrade head` no repite las migraciones ya aplicadas.
 
 ## Evidencia de los casos D
 
-La salida de cada caso está en `evidencia/`.
+La evidencia del VPS está en `evidencia/vps/`. La prueba previa en una máquina del grupo (J2) está en `evidencia/imagen-local.txt`.
 
-| Caso | Qué se demuestra | Dónde | Estado |
+| Caso | Qué se demuestra | Resultado | Evidencia |
 |---|---|---|---|
-| D-01 | `python:3.12-alpine` por debajo de los 100 MB, y el Dockerfile parte de ella | `evidencia/imagen-local.txt` (prueba local) · ⏳ VPS | Local ✅ · VPS ⏳ |
-| D-02 | Servidor limpio: `docker build` y `docker run`; el contenedor `healthy` y las migraciones aplicadas en `docker logs` | ⏳ `evidencia/D-02_build_y_run.txt` | ⏳ |
-| D-03 | Desde afuera del VPS: `/health/ready` 200, `/libros/` 200 con los libros, `POST /ventas/` 201 con los precios copiados y el total calculado | ⏳ `evidencia/D-03_desde_afuera.txt` | ⏳ |
-| D-04 | `docker rm -f libreria` y el mismo `docker run`: vuelve a estar `healthy`, los datos siguen y las migraciones no se repiten | ⏳ `evidencia/D-04_reinicio.txt` | ⏳ |
-| D-05 | Sin `DATABASE_URL`, el contenedor termina con error en lugar de quedar sirviendo | `evidencia/imagen-local.txt` (prueba local) · ⏳ VPS | Local ✅ · VPS ⏳ |
-| D-06 | La imagen no tiene `.env`, y su entorno no muestra `DATABASE_URL` ni contraseñas | `evidencia/imagen-local.txt` (prueba local) · ⏳ VPS | Local ✅ · VPS ⏳ |
-| D-07 | `docker exec libreria id` no es root | `evidencia/imagen-local.txt` (prueba local) · ⏳ VPS | Local ✅ · VPS ⏳ |
-| D-08 | El aviso del comprobante de la venta de D-03 aparece en `docker logs libreria` después de la línea de la respuesta | ⏳ `evidencia/D-08_aviso_en_logs.txt` | ⏳ |
+| D-01 | El `Dockerfile` parte de `python:3.12-alpine`, por debajo de los 100 MB | El build del VPS parte de `python:3.12-alpine`; la base pesa 74,8 MB | `vps/D-01_build_python_alpine.png` · `imagen-local.txt` |
+| D-02 | Build y arranque en el servidor; contenedor sano y migraciones al arrancar | uvicorn en `0.0.0.0:8000` y el chequeo de salud en 200 | `vps/D-02_migraciones_al_arrancar.png` · `vps/D-02_uvicorn_healthy.png` · `vps/historial_implementaciones.png` |
+| D-03 | Desde afuera del VPS: `/health/ready`, `/libros/` y `POST /ventas/` | 200; 200 con los 6 libros; 201 con la venta 2 (2 × 25000 + 27000 = 77000.00) | `vps/D-03_desde_afuera.txt` |
+| D-04 | Reiniciar el contenedor: vuelve sano y los datos siguen | La venta 2, registrada antes del reinicio, sigue en la base | `vps/D-04_reinicio.txt` · `vps/D-04_registros_reinicio.png` |
+| D-05 | Sin `DATABASE_URL`, el contenedor no queda sirviendo | `RuntimeError: Falta la variable de entorno DATABASE_URL` | `vps/D-05_sin_database_url.png` · `imagen-local.txt` |
+| D-06 | La imagen no tiene `.env` ni secretos | `/app` sin `.env`; el entorno de la imagen sin `DATABASE_URL` ni contraseñas | `vps/D-06_D-07_usuario_y_contenido.png` · `imagen-local.txt` |
+| D-07 | El proceso no es root | `uid=100(app) gid=101(app)` | `vps/D-06_D-07_usuario_y_contenido.png` |
+| D-08 | El aviso del comprobante de la venta de D-03 en los registros | `Comprobante de la venta 2 enviado a tomas@example.com (total $77000.00)` después del `201 Created` | `vps/D-08_aviso_comprobante.png` |
 
-Las pruebas locales de D-01, D-05, D-06 y D-07 son de J2 (Joaquín, 2026-11-05).
+La carga de los datos iniciales está en `vps/datos_iniciales_seed.png`: la contraseña de la base sale enmascarada (`***`).
