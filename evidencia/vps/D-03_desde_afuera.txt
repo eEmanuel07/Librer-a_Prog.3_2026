@@ -1,0 +1,16 @@
+D-03 · Desde afuera del VPS, en la URL pública (con los datos iniciales cargados)
+Fecha: 2026-11-08 19:26 -0300 · Desde: PC de Elías (Windows, curl), fuera del VPS
+URL: https://grupo2-elias-apilibreria.ugpvou.easypanel.host
+Esperado: 200; 200 con la lista de libros; 201 con los precios copiados de cada libro y el total calculado
+
+$ curl -s -w '\n%{http_code}\n' https://grupo2-elias-apilibreria.ugpvou.easypanel.host/health/ready
+{"estado":"listo","base":"ok"}
+200
+
+$ curl -s -w '\n%{http_code}\n' https://grupo2-elias-apilibreria.ugpvou.easypanel.host/libros/
+[{"id":1,"isbn":"978-950-00-0001-1","titulo":"Rayuela","precio":"25000.00","stock":12,"editorial":{"id":1,"nombre":"Sudamericana","pais":"Argentina"},"genero":{"id":1,"nombre":"Novela"}},{"id":2,"isbn":"978-950-00-0002-8","titulo":"Ficciones","precio":"18000.00","stock":8,"editorial":{"id":3,"nombre":"Emecé","pais":"Argentina"},"genero":{"id":2,"nombre":"Cuento"}},{"id":3,"isbn":"978-950-00-0003-5","titulo":"El Aleph","precio":"19500.00","stock":6,"editorial":{"id":3,"nombre":"Emecé","pais":"Argentina"},"genero":{"id":2,"nombre":"Cuento"}},{"id":4,"isbn":"978-950-00-0004-2","titulo":"Respiración artificial","precio":"27000.00","stock":5,"editorial":{"id":2,"nombre":"Alfaguara","pais":"España"},"genero":{"id":1,"nombre":"Novela"}},{"id":5,"isbn":"978-950-00-0005-9","titulo":"La invención de Morel","precio":"16000.00","stock":10,"editorial":{"id":3,"nombre":"Emecé","pais":"Argentina"},"genero":{"id":1,"nombre":"Novela"}},{"id":6,"isbn":"978-950-00-0007-3","titulo":"Antología de la literatura fantástica","precio":"30000.00","stock":4,"editorial":{"id":1,"nombre":"Sudamericana","pais":"Argentina"},"genero":null}]
+200
+
+$ curl -s -w '\n%{http_code}\n' -X POST https://grupo2-elias-apilibreria.ugpvou.easypanel.host/ventas/ -H 'Content-Type: application/json' -d '{"cliente_id": 2, "renglones": [{"libro_id": 1, "cantidad": 2}, {"libro_id": 4, "cantidad": 1}]}'
+{"id":2,"fecha":"2026-11-08T22:26:21.724967Z","total":"77000.00","cliente":{"id":2,"nombre":"Tomás Ríos","email":"tomas@example.com"},"renglones":[{"libro_id":1,"titulo":"Rayuela","cantidad":2,"precio_unitario":"25000.00","subtotal":"50000.00"},{"libro_id":4,"titulo":"Respiración artificial","cantidad":1,"precio_unitario":"27000.00","subtotal":"27000.00"}]}
+201
