@@ -33,7 +33,7 @@
 
 ## 3. Verificación final (sin commit)
 
-- [ ] 3.1 Ejecutar `python -m unittest discover -s tests` y `openspec validate b7-readme --strict`, y comprobar con búsqueda en `README.md` que no figuren `scripts.seed`, `scripts/seed.py`, `uow.py`, `DATABASE_URL` ni contraseñas fuera de lugar.
+- [x] 3.1 Ejecutar `python -m unittest discover -s tests` y `openspec validate b7-readme --strict`, y comprobar con búsqueda en `README.md` que no figuren `scripts.seed`, `scripts/seed.py`, `uow.py`, `DATABASE_URL` ni contraseñas fuera de lugar.
 
 ## Workflow follow-up
 
