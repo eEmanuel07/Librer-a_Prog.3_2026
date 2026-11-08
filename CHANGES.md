@@ -33,6 +33,7 @@
 | `j5-detalle-venta-dueno` | J5 | Joaquín | [#89](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/89) | Mergeado y archivado | `openspec/specs/ventas` |
 | `j6-mis-ventas-y-ventas` | J6 | Joaquín | [#90](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/90) | Mergeado y archivado | `openspec/specs/ventas` |
 | `j7-clientes-con-acceso` | J7 | Joaquín | por abrir | En revisión (archivado en su rama) | `openspec/specs/clientes`, `openspec/specs/ventas` |
+| `j8-ventas-http-c15` | J8 | Joaquín | por abrir | En revisión (archivado en su rama) | `openspec/specs/ventas` |
 | `h7-auth-http` | H7 | Hernán | por abrir | En revisión (archivado en su rama) | `test/auth.http` |
 
 | `e4-libros-alta-patch-baja` | E4 | Elías | [#86](https://github.com/eEmanuel07/Librer-a_Prog.3_2026/pull/86) | Mergeado y archivado | `openspec/specs/catalogo-libros` |
@@ -439,7 +440,7 @@ El grupo tiene **5 integrantes** y cada uno tiene su frente, así que la tabla e
 - **Leer antes**: `06_funcionalidades.md` §Casos
 
 ### [J8] `ventas-http-c15` · #61
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[~]` en revisión (PR listo, change archivado en su rama; va después de J7)
 - **Scope**: `test/ventas.http` (C-10 a C-12) y evidencia de C-15 (las mismas consultas con 2 y con 4 renglones)
 - **Dependencias**: J3, J4, J5, R8 · 🔓 Destraba: B7
 - **Governance**: BAJO
