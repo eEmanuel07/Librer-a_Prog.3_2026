@@ -10,6 +10,7 @@ respuesta: así se ve el orden real entre la respuesta y el aviso.
 """
 
 import unittest
+from datetime import datetime, timezone
 from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
@@ -26,11 +27,12 @@ import app.modules.generos.models  # noqa: F401
 import app.modules.libros.models  # noqa: F401
 import app.modules.usuarios.models  # noqa: F401
 import app.modules.ventas.models  # noqa: F401
+from app.core.database import get_session
 from app.core.dependencies import get_usuario_actual
 from app.modules.clientes.models import Cliente
 from app.modules.editoriales.models import Editorial
 from app.modules.libros.models import Libro
-from app.modules.usuarios.models import Usuario
+from app.modules.usuarios.models import AsignacionRol, Usuario
 from app.modules.ventas import service
 from app.modules.ventas.models import Venta
 from app.modules.ventas.router import router as ventas_router
@@ -85,6 +87,9 @@ class TestAvisoDelComprobante(unittest.TestCase):
             s.add(Cliente(nombre="Lucía Fernández", email="lucia@example.com"))
             vendedor = Usuario(email="vendedor@example.com", nombre="Vendedor", password_hash="x")
             s.add(vendedor)
+            s.flush()
+            # POST /ventas pide VENDEDOR o ADMIN (requiere_rol lee la base).
+            s.add(AsignacionRol(usuario_id=vendedor.id, rol="VENDEDOR", desde=datetime.now(timezone.utc)))
             s.commit()
             self.ids = {libro.titulo: libro.id for libro in s.exec(select(Libro)).all()}
             self.cliente_id = s.exec(select(Cliente.id)).one()
@@ -103,6 +108,11 @@ class TestAvisoDelComprobante(unittest.TestCase):
             return Usuario(id=self.vendedor_id, email="vendedor@example.com", nombre="Vendedor",
                            password_hash="x")
 
+        def _sesion():
+            with Session(self.engine) as s:
+                yield _AsyncSessionAdapter(s)
+
+        app.dependency_overrides[get_session] = _sesion
         app.dependency_overrides[get_ventas_uow] = _uow
         app.dependency_overrides[get_usuario_actual] = _usuario
 

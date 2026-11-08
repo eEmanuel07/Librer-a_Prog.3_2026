@@ -16,7 +16,6 @@ logger = logging.getLogger("uvicorn.error")
 
 _DETALLE_NO_EXISTE = "La venta no existe"
 _DETALLE_AJENA = "No tenés permiso para ver esta venta"
-_LISTADO_SIN_PERMISO = "No tenés permiso para ver todas las ventas"
 _ROLES_PERSONAL = {"VENDEDOR", "ADMIN"}
 
 
@@ -62,17 +61,9 @@ async def ver_venta(uow: VentaUnitOfWork, venta_id: int, usuario: Usuario) -> Ve
         return VentaRead.desde_modelo(venta)
 
 
-async def listar_ventas(
-    uow: VentaUnitOfWork, params: ParametrosPagina, usuario: Usuario
-) -> Pagina[VentaResumen]:
-    """Todas las ventas, paginadas, para el personal (VENDEDOR o ADMIN).
-
-    Mientras no esté ``requiere_rol`` (R2), el rol se controla acá con los roles
-    vigentes en la base (RN-04): 403 si quien pide no es personal.
-    """
+async def listar_ventas(uow: VentaUnitOfWork, params: ParametrosPagina) -> Pagina[VentaResumen]:
+    """Todas las ventas, paginadas. El rol (VENDEDOR o ADMIN) lo controla el router con requiere_rol."""
     async with uow:
-        if not await _es_personal(uow, usuario):
-            raise SinPermiso(_LISTADO_SIN_PERMISO)
         ventas, total = await uow.ventas.listar_pagina(params)
         return Pagina.armar([VentaResumen.desde_modelo(v) for v in ventas], total, params)
 

@@ -1,4 +1,5 @@
 from app.core.errors import NoEncontrado
+from app.core.paginacion import Pagina, ParametrosPagina
 from app.modules.clientes.models import Cliente, PerfilCliente
 from app.modules.clientes.schemas import ClienteCreate, ClienteRead, ClienteUpdate, PerfilCreate, PerfilRead
 from app.modules.clientes.unit_of_work import ClienteUnitOfWork
@@ -22,13 +23,13 @@ async def obtener_cliente(uow: ClienteUnitOfWork, cliente_id: int) -> ClienteRea
 
 
 async def listar_ventas_de_cliente(
-    uow: ClienteUnitOfWork, cliente_id: int, limit: int, offset: int
-) -> list[VentaRead]:
+    uow: ClienteUnitOfWork, cliente_id: int, params: ParametrosPagina
+) -> Pagina[VentaRead]:
     async with uow:
-        # Primero se confirma que exista para poder dar 404 en vez de una lista vacia.
+        # Primero se confirma que exista para poder dar 404 en vez de una página vacía.
         await _buscar_cliente(uow, cliente_id)
-        ventas = await uow.clientes.listar_ventas(cliente_id, limit, offset)
-        return [VentaRead.desde_modelo(v) for v in ventas]
+        ventas, total = await uow.clientes.listar_ventas_pagina(cliente_id, params)
+        return Pagina.armar([VentaRead.desde_modelo(v) for v in ventas], total, params)
 
 
 # ---------- Escrituras ----------

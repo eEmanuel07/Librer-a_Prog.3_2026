@@ -1,6 +1,6 @@
 """Tests de GET /ventas y GET /mis-ventas con el envoltorio (issue #59 / J6).
 
-/ventas es del personal (VENDEDOR o ADMIN, según los roles vigentes en la base);
+/ventas es del personal (VENDEDOR o ADMIN, con requiere_rol: roles vigentes en la base);
 /mis-ventas sólo pide estar autenticado y devuelve las ventas del cliente
 asociado al usuario (RN-14). Los dos devuelven {items, total, page, size, pages}.
 
@@ -27,7 +27,6 @@ import app.modules.usuarios.models  # noqa: F401
 import app.modules.ventas.models  # noqa: F401
 from app.core.database import get_session
 from app.core.dependencies import get_usuario_actual
-from app.core.errors import SinPermiso
 from app.core.paginacion import PaginaInexistente, ParametrosPagina
 from app.main import app as app_principal
 from app.main import pagina_inexistente
@@ -38,7 +37,13 @@ from app.modules.usuarios.models import AsignacionRol, Usuario
 from app.modules.ventas.models import RenglonVenta, Venta
 from app.modules.ventas.router import router as ventas_router
 from app.modules.ventas.router import router_mis_ventas
-from app.modules.ventas.service import listar_mis_ventas, listar_ventas
+from app.modules.ventas.service import listar_mis_ventas
+from app.modules.ventas.service import listar_ventas as _listar_ventas
+
+
+async def listar_ventas(uow, params, _usuario):
+    # El rol de GET /ventas lo controla requiere_rol en el router; el service no recibe usuario.
+    return await _listar_ventas(uow, params)
 from app.modules.ventas.unit_of_work import VentaUnitOfWork, get_ventas_uow
 
 
@@ -157,12 +162,6 @@ class TestListadosService(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(len(ids), 5)
                 self.assertEqual(pagina.items[0].cliente.email, "ana@example.com")
 
-    async def test_un_cliente_o_un_rol_revocado_no_ven_todas_las_ventas(self):
-        for clave in ("ana", "ex_vendedor"):
-            with self.subTest(clave), self.assertRaises(SinPermiso) as error:
-                await self._llamar(listar_ventas, clave)
-            self.assertEqual(error.exception.mensaje, "No tenés permiso para ver todas las ventas")
-
     async def test_paginas_de_ventas_y_pagina_de_mas(self):
         ultima = await self._llamar(listar_ventas, "vendedor", page=3, size=2)
         self.assertEqual((ultima.total, ultima.pages, len(ultima.items)), (5, 3, 1))
@@ -171,9 +170,9 @@ class TestListadosService(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(error.exception.mensaje, "La página 4 no existe: hay 3")
 
     async def test_el_listado_usa_las_mismas_consultas_con_cualquier_tamano(self):
-        # roles + conteo + página (venta JOIN cliente)
-        self.assertEqual(await self._contar_consultas(listar_ventas, "vendedor", size=2), 3)
-        self.assertEqual(await self._contar_consultas(listar_ventas, "vendedor", size=5), 3)
+        # conteo + página (venta JOIN cliente); los roles los consulta requiere_rol
+        self.assertEqual(await self._contar_consultas(listar_ventas, "vendedor", size=2), 2)
+        self.assertEqual(await self._contar_consultas(listar_ventas, "vendedor", size=5), 2)
 
     # ---------- GET /mis-ventas ----------
 
@@ -244,17 +243,26 @@ class TestListadosHttp(unittest.TestCase):
             with self.subTest(ruta):
                 self.assertEqual(self.client.get(ruta).status_code, 401)
 
-    def test_ventas_403_para_un_cliente_y_200_para_el_vendedor(self):
-        self._como("ana")
-        respuesta = self.client.get("/ventas/")
-        self.assertEqual(respuesta.status_code, 403)
-        self.assertEqual(respuesta.json(), {"detail": "No tenés permiso para ver todas las ventas"})
+    def test_ventas_403_para_un_cliente_o_un_rol_revocado_y_200_para_el_vendedor(self):
+        for clave in ("ana", "ex_vendedor"):
+            with self.subTest(clave):
+                self._como(clave)
+                respuesta = self.client.get("/ventas/")
+                self.assertEqual(respuesta.status_code, 403)
+                self.assertEqual(respuesta.json(), {"detail": "No tiene permisos para realizar esta acción"})
         self._como("vendedor")
         respuesta = self.client.get("/ventas/", params={"size": 2})
         self.assertEqual(respuesta.status_code, 200)
         cuerpo = respuesta.json()
         self.assertEqual(set(cuerpo), {"items", "total", "page", "size", "pages"})
         self.assertEqual((cuerpo["total"], cuerpo["size"], cuerpo["pages"], len(cuerpo["items"])), (5, 2, 3, 2))
+
+    def test_registrar_una_venta_403_para_un_cliente(self):
+        # POST /ventas también es del personal (requiere_rol): un cliente no puede vender.
+        self._como("ana")
+        respuesta = self.client.post("/ventas/", json={"cliente_id": 1, "renglones": [{"libro_id": 1, "cantidad": 1}]})
+        self.assertEqual(respuesta.status_code, 403)
+        self.assertEqual(respuesta.json(), {"detail": "No tiene permisos para realizar esta acción"})
 
     def test_mis_ventas_200_con_el_envoltorio(self):
         self._como("ana")
