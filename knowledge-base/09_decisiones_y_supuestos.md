@@ -40,15 +40,10 @@ Decisiones que ya tomó el grupo o que fija la consigna. Las de cada change est�
 **Decisión:** la rama `despliegue` sale del tag `entrega-final` (el TP 1-4 tal como se entregó) y nunca se mezcla con `main`.
 **Justificación:** la consigna pide desplegar el TP sin las modificaciones del parcial (págs. 2, 14).
 
-### DD-08 — `main.py` en `app/main.py` durante el desarrollo y movimiento a la raíz al cierre
-**Decisión:** durante el desarrollo todos siguen registrando sus routers en `app/main.py`, y al final, antes de entregar, se mueve a `main.py` en la raíz como muestra el árbol de la estructura obligatoria (pág. 8). `seed.py` va en la raíz desde R8 (`python seed.py`, pág. 21).
-**Motivo:** no generar conflictos en las ramas abiertas mientras el grupo desarrolla en paralelo.
-**Checklist del movimiento final:**
-1. Mover `app/main.py` a `main.py` en la raíz.
-2. El arranque pasa a `uvicorn main:app`.
-3. Todos los `import app.modules...` quedan **arriba**, antes de `app = FastAPI(...)`, porque la variable `app` y el paquete `app/` se llaman igual.
-4. Actualizar todo lo que importe `app.main` (tests, scripts, `README.md`).
-5. Correr los tests (`python -m unittest discover -s tests`) y los `.http` completos después de moverlo.
+### DD-08 — `main.py` se mantiene en `app/main.py`
+**Decisión:** `main.py` permanece en `app/main.py` (arranque con `uvicorn app.main:app --reload`) y no se mueve a la raíz del proyecto. `seed.py` sí va en la raíz desde R8 (`python seed.py`, pág. 21).
+**Contexto:** el árbol de estructura de la consigna (pág. 8) muestra `main.py` en la raíz, mientras que el proyecto heredado del TP lo ubica en `app/main.py` (igual que el `Dockerfile` de la pág. 14).
+**Justificación:** confirmado por el profesor en la clase de consulta del viernes 6/11: `app/main.py` es válido para la entrega del parcial y evita renombrar imports o romper las ramas del equipo.
 
 ## Supuestos inferidos
 

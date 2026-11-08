@@ -40,7 +40,7 @@ La fuente de verdad del dominio es `knowledge-base/`, que resume la consigna `Pa
 | [10_preguntas_abiertas.md](knowledge-base/10_preguntas_abiertas.md) | ⚠️ Lo que no coincide con la consigna |
 | [11_entrega_y_despliegue.md](knowledge-base/11_entrega_y_despliegue.md) | El `.zip`, la imagen y el VPS |
 
-> `main.py` se mantiene en `app/main.py` hasta el cierre; al final se mueve a la raíz (ver decisión DD-08 en [09](knowledge-base/09_decisiones_y_supuestos.md)).
+> `main.py` se mantiene en `app/main.py` (confirmado por el profesor en la consulta del viernes 6/11; ver decisión DD-08 en [09](knowledge-base/09_decisiones_y_supuestos.md)). `seed.py` va en la raíz.
 > Las reglas usan **la numeración del parcial** (RN-01 a RN-16). Los comentarios viejos del código usan la del TP (IN-03).
 
 ---
