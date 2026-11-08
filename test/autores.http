@@ -5,6 +5,18 @@
 @id_inexistente = 99999
 
 
+### Inicio de sesión: ADMIN (requerido para alta y edición de catálogo, R7)
+# Esperado: 200 con Set-Cookie: access_token=...; HttpOnly
+# @name loginAdmin
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "Admin123!"
+}
+
+
 ### Alta de un autor
 # Esperado: 201 con id, nombre y nacionalidad
 # @name autorNuevo
@@ -41,7 +53,7 @@ Content-Type: application/json
 
 ### Detalle del autor recien creado
 # Esperado: 200
-GET {{host}}/autores/{{autorNuevo.response.body.id}}
+GET {{host}}/autores/{{autorNuevo.response.body.$.id}}
 
 
 ### Detalle de un autor que no existe
@@ -56,7 +68,7 @@ GET {{host}}/autores/abc
 
 ### PATCH parcial: solo la nacionalidad
 # Esperado: 200, el nombre queda igual
-PATCH {{host}}/autores/{{autorNuevo.response.body.id}}
+PATCH {{host}}/autores/{{autorNuevo.response.body.$.id}}
 Content-Type: application/json
 
 {
@@ -66,7 +78,7 @@ Content-Type: application/json
 
 ### PATCH con un campo en null
 # Esperado: 422
-PATCH {{host}}/autores/{{autorNuevo.response.body.id}}
+PATCH {{host}}/autores/{{autorNuevo.response.body.$.id}}
 Content-Type: application/json
 
 {
@@ -85,14 +97,13 @@ Content-Type: application/json
 
 
 ### Libros de un autor, con el rol y el orden de cada autoria
-# Esperado: 200. Con SQL_ECHO=true se ven 2 SELECT fijos: el autor y
-# libro_autor JOIN libro, tenga uno o muchos libros
+# Esperado: 200 con envoltorio {items, total, page, size, pages}
 GET {{host}}/autores/{{autor_con_libros}}/libros
 
 
 ### Libros del autor recien creado
-# Esperado: 200 con lista vacia
-GET {{host}}/autores/{{autorNuevo.response.body.id}}/libros
+# Esperado: 200 con items vacio y total 0
+GET {{host}}/autores/{{autorNuevo.response.body.$.id}}/libros
 
 
 ### Libros de un autor que no existe
@@ -102,4 +113,4 @@ GET {{host}}/autores/{{id_inexistente}}/libros
 
 ### Paginacion fuera de rango en los libros del autor
 # Esperado: 422
-GET {{host}}/autores/{{autor_con_libros}}/libros?limit=101
+GET {{host}}/autores/{{autor_con_libros}}/libros?size=101
